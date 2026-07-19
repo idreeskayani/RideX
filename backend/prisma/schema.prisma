@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  RIDER
+  DRIVER
+  ADMIN
+}
+
+enum DriverStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String  @id @default(uuid())
+  fullName     String
+  email        String  @unique
+  password     String
+  phoneNumber  String?
+  profileImage String?
+  role         Role    @default(RIDER)
+  isVerified   Boolean @default(false)
+
+  refreshTokenId String?
+
+  driverProfile Driver?
+
+  riderRides  Ride[] @relation("RiderRides")
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Driver {
+  id String @id @default(uuid())
+
+  userId String @unique
+  user   User @relation(fields: [userId], references: [id])
+
+  cnic          String @unique
+  licenseNumber String @unique
+
+  vehicleType   String
+  vehicleModel  String
+  vehicleNumber String @unique
+
+  isOnline Boolean @default(false)
+
+  status DriverStatus @default(PENDING)
+
+  rides Ride[] // <-- Add this
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum RideStatus {
+  PENDING
+  ACCEPTED
+  STARTED
+  COMPLETED
+  CANCELLED_BY_RIDER
+  CANCELLED_BY_DRIVER
+}
+
+model Ride {
+  id String @id @default(uuid())
+
+  pickup      String
+  destination String
+
+  fare Float?
+
+  status RideStatus @default(PENDING)
+
+  riderId String
+  rider User @relation("RiderRides", fields: [riderId], references: [id])
+
+  driverId String?
+  driver Driver? @relation(fields: [driverId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
