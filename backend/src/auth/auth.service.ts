@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import {ForbiddenException} from '@nestjs/common/exceptions/forbidden.exception';
 
 @Injectable()
 export class AuthService {
@@ -56,10 +57,16 @@ export class AuthService {
       },
     });
 
+
     if (!user) {
       throw new BadRequestException('Invalid email or password');
     }
 
+    if (user.isBlocked) {
+      throw new ForbiddenException(
+        'Your account has been blocked by the administrator.',
+      );
+    }
     const isPasswordValid = await bcrypt.compare(
       password,
       user.password,

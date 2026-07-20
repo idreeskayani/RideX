@@ -2,7 +2,9 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
-import {DriverStatus} from "@prisma/client";
+import { DriverStatus } from "@prisma/client";
+import { RideStatus } from "@prisma/client";
+
 @Injectable()
 export class DriverService {
   constructor(private prisma: PrismaService) { }
@@ -99,5 +101,107 @@ export class DriverService {
       },
       data: dto,
     });
+  }
+
+  async getEarnings(userId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: {
+        userId,
+      },
+    });
+
+    if (!driver) {
+      throw new BadRequestException(
+        'Driver profile not found',
+      );
+    }
+
+    const completedRides = await this.prisma.ride.findMany({
+      where: {
+        driverId: driver.id,
+        status: RideStatus.COMPLETED,
+      },
+    });
+
+   const totalEarnings = completedRides.reduce(
+  (sum, ride) => sum + (ride.fare ?? 0),
+  0,
+);
+
+    const today = new Date();
+
+    const startOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+
+    const endOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() + 1,
+    );
+
+    const todayRides = await this.prisma.ride.findMany({
+      where: {
+        driverId: driver.id,
+        status: RideStatus.COMPLETED,
+        updatedAt: {
+          gte: startOfDay,
+          lt: endOfDay,
+        },
+      },
+    });
+
+    const todayEarnings = todayRides.reduce(
+  (sum, ride) => sum + (ride.fare ?? 0),
+  0,
+);
+
+    return {
+      totalEarnings,
+      todayEarnings,
+      completedRides: completedRides.length,
+      todayCompletedRides: todayRides.length,
+    };
+  }
+
+  async getEarningHistory(userId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: {
+        userId,
+      },
+    });
+
+    if (!driver) {
+      throw new BadRequestException(
+        'Driver profile not found',
+      );
+    }
+
+    const rides = await this.prisma.ride.findMany({
+      where: {
+        driverId: driver.id,
+        status: RideStatus.COMPLETED,
+      },
+      select: {
+        id: true,
+        pickup: true,
+        destination: true,
+        fare: true,
+        updatedAt: true,
+        rider: {
+          select: {
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+
+    return rides;
   }
 }

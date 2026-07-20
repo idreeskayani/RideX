@@ -1,12 +1,12 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { DriverService } from './driver.service';
 import { CreateDriverDto } from './dto/create-driver.dto';
-import {UpdateDriverDto} from './dto/update-driver.dto';
+import { UpdateDriverDto } from './dto/update-driver.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
 import { Get, Patch } from '@nestjs/common';
-import {Roles} from "../auth/decorators/roles/roles.decorator";
-import {RolesGuard} from "../auth/guards/roles/roles.guard";
-import {Role} from "@prisma/client";
+import { Roles } from "../auth/decorators/roles/roles.decorator";
+import { RolesGuard } from "../auth/guards/roles/roles.guard";
+import { Role } from "@prisma/client";
 
 @Controller('driver')
 export class DriverController {
@@ -50,6 +50,20 @@ export class DriverController {
     return this.driverService.updateProfile(
       req.user.userId,
       dto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('earnings')
+  getEarnings(@Req() req) {
+    return this.driverService.getEarnings(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('earnings/history')
+  getEarningHistory(@Req() req) {
+    return this.driverService.getEarningHistory(
+      req.user.userId,
     );
   }
 }

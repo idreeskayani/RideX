@@ -20,21 +20,25 @@ enum DriverStatus {
 }
 
 model User {
-  id           String  @id @default(uuid())
-  fullName     String
-  email        String  @unique
-  password     String
+  id       String @id @default(uuid())
+  fullName String
+  email    String @unique
+  password String
+
   phoneNumber  String?
   profileImage String?
-  role         Role    @default(RIDER)
-  isVerified   Boolean @default(false)
+
+  role       Role    @default(RIDER)
+  isVerified Boolean @default(false)
+  isBlocked  Boolean @default(false)
 
   refreshTokenId String?
 
-  driverProfile Driver?
+  driver Driver?
 
-  riderRides  Ride[] @relation("RiderRides")
- 
+  riderRides Ride[]   @relation("RiderRides")
+  ratings    Rating[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -43,7 +47,7 @@ model Driver {
   id String @id @default(uuid())
 
   userId String @unique
-  user   User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
   cnic          String @unique
   licenseNumber String @unique
@@ -56,7 +60,9 @@ model Driver {
 
   status DriverStatus @default(PENDING)
 
-  rides Ride[] // <-- Add this
+  rides Ride[] @relation("DriverRides")
+
+  ratings Rating[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,11 +88,31 @@ model Ride {
   status RideStatus @default(PENDING)
 
   riderId String
-  rider User @relation("RiderRides", fields: [riderId], references: [id])
+  rider   User   @relation("RiderRides", fields: [riderId], references: [id])
 
   driverId String?
-  driver Driver? @relation(fields: [driverId], references: [id])
+  driver   Driver? @relation("DriverRides", fields: [driverId], references: [id])
+
+  rating Rating?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Rating {
+  id String @id @default(uuid())
+
+  rideId String @unique
+  ride   Ride   @relation(fields: [rideId], references: [id])
+
+  riderId String
+  rider   User   @relation(fields: [riderId], references: [id])
+
+  driverId String
+  driver   Driver @relation(fields: [driverId], references: [id])
+
+  stars  Int
+  review String?
+
+  createdAt DateTime @default(now())
 }
