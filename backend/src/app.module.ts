@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { DriverModule } from './driver/driver.module';
 import { AdminModule } from './admin/admin.module';
 import { RideModule } from './ride/ride.module';
+import { RatingModule } from './rating/rating.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { RideModule } from './ride/ride.module';
     DriverModule,
     AdminModule,
     RideModule,
+    RatingModule,
   ],
 })
 export class AppModule {}
