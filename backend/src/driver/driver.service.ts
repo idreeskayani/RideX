@@ -2,12 +2,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 import { DriverStatus } from "@prisma/client";
 import { RideStatus } from "@prisma/client";
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class DriverService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) { }
 
   async register(userId: string, dto: CreateDriverDto) {
     // console.log('Received userId:', userId);
@@ -22,6 +27,20 @@ export class DriverService {
     const driver = await this.prisma.driver.create({
       data: { userId, ...dto },
     });
+
+    const admin = await this.prisma.user.findFirst({
+  where: {
+    role: 'ADMIN',
+  },
+});
+
+if (admin) {
+  await this.notificationService.createNotification(
+    admin.id,
+    'New Driver Registration',
+    `${driver.userId} has applied as a driver.`,
+  );
+}
 
     return { message: 'Driver registered successfully', driver };
   }
@@ -204,4 +223,37 @@ export class DriverService {
 
     return rides;
   }
+
+ async updateLocation(
+  userId: string,
+  dto: UpdateLocationDto,
+) {
+  const driver = await this.prisma.driver.findUnique({
+    where: {
+      userId,
+    },
+  });
+
+  if (!driver) {
+    throw new BadRequestException(
+      'Driver profile not found',
+    );
+  }
+
+  if (!driver.isOnline) {
+    throw new BadRequestException(
+      'Driver is offline',
+    );
+  }
+
+  return this.prisma.driver.update({
+    where: {
+      userId,
+    },
+    data: ({
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+    } as any),
+  });
+}
 }

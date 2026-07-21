@@ -6,13 +6,16 @@ import {
   UseGuards,
   Delete,
 } from '@nestjs/common';
+import { Query } from '@nestjs/common/decorators';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles/roles.guard';
 import { Roles } from '../auth/decorators/roles/roles.decorator';
 import { Role } from '@prisma/client';
-import {RideStatus} from '@prisma/client';
-
+import { RideStatus } from '@prisma/client';
+import { GetUsersDto } from './dto/get-users.dto';
+import {GetDriversDto} from './dto/get-drivers.dto';
+import {GetRidesDto} from './dto/get-rides.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -54,19 +57,18 @@ export class AdminController {
     return this.adminService.rejectDriver(id);
   }
 
-  @Get('drivers')
-  getAllDrivers() {
-    return this.adminService.getAllDrivers();
-  }
+ @Get('drivers')
+getAllDrivers(@Query() query: GetDriversDto) {
+  return this.adminService.getAllDrivers(query);
+}
 
   // ===========================
   // Get All Users
   // ===========================
   @Get('users')
-  getAllUsers() {
-    return this.adminService.getAllUsers();
+  getAllUsers(@Query() query: GetUsersDto) {
+    return this.adminService.getAllUsers(query);
   }
-
   // ===========================
   // Block User
   // ===========================
@@ -92,9 +94,9 @@ export class AdminController {
   }
 
   @Get('rides')
-  getAllRides() {
-    return this.adminService.getAllRides();
-  }
+getAllRides(@Query() query: GetRidesDto) {
+  return this.adminService.getAllRides(query);
+}
 
   @Get('rides/:id')
   getRideById(@Param('id') id: string) {

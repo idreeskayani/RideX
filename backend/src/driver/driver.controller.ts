@@ -7,6 +7,7 @@ import { Get, Patch } from '@nestjs/common';
 import { Roles } from "../auth/decorators/roles/roles.decorator";
 import { RolesGuard } from "../auth/guards/roles/roles.guard";
 import { Role } from "@prisma/client";
+import { UpdateLocationDto } from './dto/update-location.dto';
 
 @Controller('driver')
 export class DriverController {
@@ -64,6 +65,19 @@ export class DriverController {
   getEarningHistory(@Req() req) {
     return this.driverService.getEarningHistory(
       req.user.userId,
+    );
+  }
+
+  @Patch('location')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.DRIVER)
+  updateLocation(
+    @Req() req,
+    @Body() dto: UpdateLocationDto,
+  ) {
+    return this.driverService.updateLocation(
+      req.user.userId,
+      dto,
     );
   }
 }

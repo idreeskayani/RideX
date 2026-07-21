@@ -7,8 +7,9 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Query} from '@nestjs/common';
 import { RideService } from './ride.service';
-import {DriverService} from "../driver/driver.service";
+import { DriverService } from "../driver/driver.service";
 import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
 import { CreateRideDto } from './dto/create-ride.dto';
 import { Get } from '@nestjs/common';
@@ -115,5 +116,18 @@ export class RideController {
   @Get('my-trips')
   getMyTrips(@Req() req) {
     return this.rideService.getMyTrips(req.user.userId);
+  }
+
+  @Get('nearby-drivers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.RIDER)
+  getNearbyDrivers(
+    @Query('latitude') latitude: string,
+    @Query('longitude') longitude: string,
+  ) {
+    return this.rideService.getNearbyDrivers(
+      Number(latitude),
+      Number(longitude),
+    );
   }
 }
