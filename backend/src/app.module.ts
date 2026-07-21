@@ -6,6 +6,7 @@ import { DriverModule } from './driver/driver.module';
 import { AdminModule } from './admin/admin.module';
 import { RideModule } from './ride/ride.module';
 import { RatingModule } from './rating/rating.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RatingModule } from './rating/rating.module';
     AdminModule,
     RideModule,
     RatingModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}

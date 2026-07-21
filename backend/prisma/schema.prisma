@@ -38,6 +38,7 @@ model User {
 
   riderRides Ride[]   @relation("RiderRides")
   ratings    Rating[]
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -57,6 +58,9 @@ model Driver {
   vehicleNumber String @unique
 
   isOnline Boolean @default(false)
+
+  latitude Float?
+  longitude Float?
 
   status DriverStatus @default(PENDING)
 
@@ -113,6 +117,20 @@ model Rating {
 
   stars  Int
   review String?
+
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  title     String
+  message   String
+
+  isRead    Boolean  @default(false)
 
   createdAt DateTime @default(now())
 }
