@@ -53,7 +53,7 @@ model Driver {
   cnic          String @unique
   licenseNumber String @unique
 
-  vehicleType   String
+  vehicleType   RideCategory
   vehicleModel  String
   vehicleNumber String @unique
 
@@ -75,6 +75,7 @@ model Driver {
 enum RideStatus {
   PENDING
   ACCEPTED
+  DRIVER_ARRIVED
   STARTED
   COMPLETED
   CANCELLED_BY_RIDER
@@ -87,9 +88,12 @@ model Ride {
   pickup      String
   destination String
 
+  category    RideCategory @default(MINI)
   fare Float?
 
   status RideStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentIntentId String?
 
   riderId String
   rider   User   @relation("RiderRides", fields: [riderId], references: [id])
@@ -133,4 +137,17 @@ model Notification {
   isRead    Boolean  @default(false)
 
   createdAt DateTime @default(now())
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum RideCategory {
+  MINI
+  RIDE_AC
+  PREMIUM
 }

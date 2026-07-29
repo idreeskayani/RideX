@@ -12,5 +12,6 @@ import { PrismaModule } from 'src/prisma/prisma.module';
   ],
   controllers: [DriverController],
   providers: [DriverService, PrismaService],
+  exports:[DriverService],
 })
 export class DriverModule {}

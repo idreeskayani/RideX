@@ -100,20 +100,24 @@ export class RatingService {
         },
       });
 
-    const average =
-      ratings.length === 0
-        ? 0
-        : ratings.reduce(
-            (sum, item) => sum + item.stars,
-            0,
-          ) / ratings.length;
+    const result = await this.prisma.rating.aggregate({
+  where: {
+    driverId: driver.id,
+  },
+  _avg: {
+    stars: true,
+  },
+  _count: {
+    stars: true,
+  },
+});
 
-    return {
-      averageRating: Number(
-        average.toFixed(1),
-      ),
-      totalRatings: ratings.length,
-      ratings,
-    };
+   return {
+  averageRating: Number(
+    (result._avg.stars ?? 0).toFixed(1),
+  ),
+  totalRatings: result._count.stars,
+  ratings,
+};
   }
 }

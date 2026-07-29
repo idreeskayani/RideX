@@ -256,4 +256,40 @@ if (admin) {
     } as any),
   });
 }
+
+async getCurrentRide(userId: string) {
+  const driver = await this.prisma.driver.findUnique({
+    where: {
+      userId,
+    },
+  });
+
+  if (!driver) {
+    throw new BadRequestException(
+      'Driver profile not found',
+    );
+  }
+
+  return this.prisma.ride.findFirst({
+    where: {
+      driverId: driver.id,
+      status: {
+        in: [
+          RideStatus.ACCEPTED,
+          RideStatus.STARTED,
+        ],
+      },
+    },
+    include: {
+      rider: {
+        select: {
+          id: true,
+          fullName: true,
+          phoneNumber: true,
+          profileImage: true,
+        },
+      },
+    },
+  });
+}
 }

@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsEnum } from 'class-validator';
+import { RideCategory } from '@prisma/client';
 
 export class CreateDriverDto {
   @IsString()
@@ -9,9 +10,9 @@ export class CreateDriverDto {
   @IsNotEmpty()
   licenseNumber!: string;
 
-  @IsString()
+  @IsEnum(RideCategory)
   @IsNotEmpty()
-  vehicleType!: string;
+  vehicleType!: RideCategory;
 
   @IsString()
   @IsNotEmpty()
