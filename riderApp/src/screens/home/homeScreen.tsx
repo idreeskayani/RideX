@@ -245,8 +245,15 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
 
   const handleSearch = useCallback(
     (text: string, field: ActiveField) => {
-      if (field === 'pickup') setPickupText(text);
-      if (field === 'destination') setDestinationText(text);
+      if (field === 'pickup') {
+        setPickupText(text);
+        // clear coordinates only when user edits — fare recalculates when new place selected
+        if (text !== pickupText) setPickup(null);
+      }
+      if (field === 'destination') {
+        setDestinationText(text);
+        if (text !== destinationText) setDestination(null);
+      }
 
       if (searchTimer.current) clearTimeout(searchTimer.current);
 
@@ -327,7 +334,7 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
       dispatch(setRideLocations({ pickup, destination }));
       const fare = getFare(selectedCategory);
       const res = await requestRide(pickupText, destinationText, fare, selectedCategory);
-      navigation.navigate('RideTracking', { rideId: res.ride.id });
+      navigation.navigate('RideSearching', { rideId: res.ride.id });
     } catch {
       setLocationError('Failed to request ride. Try again.');
     } finally {
