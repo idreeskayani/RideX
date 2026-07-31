@@ -3,6 +3,7 @@ import {
   Controller,
   Post,
   Patch,
+  Delete,
   Param,
   Req,
   UseGuards,
@@ -57,7 +58,7 @@ export class RideController {
     );
   }
   @UseGuards(JwtAuthGuard)
-  @Patch('start/:rideId')
+  @Patch(':rideId/start')
   startRide(
     @Req() req,
     @Param('rideId') rideId: string,
@@ -145,4 +146,13 @@ arriveRide(
     req.user.userId,
   );
 }
+
+  @Delete(':rideId')
+  @UseGuards(JwtAuthGuard)
+  deleteRide(
+    @Param('rideId') rideId: string,
+    @Req() req,
+  ) {
+    return this.rideService.deleteRide(rideId, req.user.userId);
+  }
 }

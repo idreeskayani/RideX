@@ -88,6 +88,11 @@ model Ride {
   pickup      String
   destination String
 
+  pickupLat     Float?
+  pickupLng     Float?
+  destinationLat Float?
+  destinationLng Float?
+
   category    RideCategory @default(MINI)
   fare Float?
 

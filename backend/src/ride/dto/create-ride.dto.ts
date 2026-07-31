@@ -14,4 +14,20 @@ export class CreateRideDto {
   @IsOptional()
   @IsEnum(RideCategory)
   category?: RideCategory;
+
+  @IsOptional()
+  @IsNumber()
+  pickupLat?: number;
+
+  @IsOptional()
+  @IsNumber()
+  pickupLng?: number;
+
+  @IsOptional()
+  @IsNumber()
+  destinationLat?: number;
+
+  @IsOptional()
+  @IsNumber()
+  destinationLng?: number;
 }

@@ -13,6 +13,11 @@ import CustomInput from '../../components/CustomInput';
 import CustomButton from '../../components/CustomButton';
 import { login } from '../../api/auth';
 import { saveTokens } from '../../utils/storage';
+import { jwtDecode } from 'jwt-decode';
+import { getActiveRide } from '../../api/ride';
+import { navigateToActiveRide } from '../../utils/navigateToActiveRide';
+
+interface JwtPayload { role?: string; }
 
 const LoginScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
@@ -24,13 +29,18 @@ const LoginScreen = ({ navigation }: any) => {
 
     try {
       const data = await login(email, password);
+      await saveTokens(data.accessToken, data.refreshToken);
+      const decoded = jwtDecode<JwtPayload>(data.accessToken);
+      const role = decoded.role ?? 'RIDER';
 
-      await saveTokens(
-        data.accessToken,
-        data.refreshToken,
-      );
-
-      navigation.getParent()?.replace('Main');
+      try {
+        const activeRide = await getActiveRide(role);
+        if (!navigateToActiveRide(navigation.getParent(), activeRide, role)) {
+          navigation.getParent()?.replace('Main', { role });
+        }
+      } catch {
+        navigation.getParent()?.replace('Main', { role });
+      }
     } catch (error: any) {
       setLoading(false);
       console.log("STATUS:", error.response?.status);

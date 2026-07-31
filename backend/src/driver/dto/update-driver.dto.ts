@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum } from 'class-validator';
-import { RideCategory } from '@prisma/client';
+import { RideCategory } from './create-driver.dto';
 
 export class UpdateDriverDto {
   @IsOptional()

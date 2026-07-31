@@ -1,5 +1,10 @@
 import { IsNotEmpty, IsString, IsEnum } from 'class-validator';
-import { RideCategory } from '@prisma/client';
+
+export enum RideCategory {
+  MINI = 'MINI',
+  RIDE_AC = 'RIDE_AC',
+  PREMIUM = 'PREMIUM',
+}
 
 export class CreateDriverDto {
   @IsString()

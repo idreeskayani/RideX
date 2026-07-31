@@ -22,8 +22,9 @@ import {
 import Geolocation from '@react-native-community/geolocation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
-import { setRideLocations } from '../../redux/rideSlice';
+import { setRideLocations, setRideId } from '../../redux/rideSlice';
 import { requestRide, getNearbyDrivers, type RideCategory } from '../../api/ride';
+import QuickLogoutButton from '../../components/QuickLogoutButton';
 
 // ---------- Geolocation config (required for @react-native-community/geolocation) ----------
 Geolocation.setRNConfiguration({
@@ -132,6 +133,7 @@ const SHEET_COLLAPSED_HEIGHT = 160;
 // ---------- Component ----------
 
 export default function HomeScreen({ navigation }: any): React.JSX.Element {
+
   const dispatch = useDispatch();
   const cameraRef = useRef<CameraRef>(null);
 
@@ -333,7 +335,8 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
     try {
       dispatch(setRideLocations({ pickup, destination }));
       const fare = getFare(selectedCategory);
-      const res = await requestRide(pickupText, destinationText, fare, selectedCategory);
+      const res = await requestRide(pickupText, destinationText, fare, selectedCategory, pickup, destination);
+      dispatch(setRideId(res.ride.id));
       navigation.navigate('RideSearching', { rideId: res.ride.id });
     } catch {
       setLocationError('Failed to request ride. Try again.');
@@ -414,6 +417,8 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
           </Marker>
         )}
       </MapLibre>
+
+      <QuickLogoutButton />
 
       {locationError && (
         <View style={styles.errorBanner}>

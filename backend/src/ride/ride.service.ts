@@ -24,6 +24,10 @@ export class RideService {
         destination: dto.destination,
         fare: dto.fare,
         category: dto.category ?? 'MINI',
+        pickupLat: dto.pickupLat,
+        pickupLng: dto.pickupLng,
+        destinationLat: dto.destinationLat,
+        destinationLng: dto.destinationLng,
       },
     });
 
@@ -187,14 +191,9 @@ export class RideService {
       'Driver Arrived',
       'Your driver has arrived at the pickup location.',
     );
-    this.socketGateway.sendRideStatus(
-      ride.riderId,
-      'ride-arrived',
-      {
-        rideId: updatedRide.id,
-        status: updatedRide.status,
-      },
-    );
+    const arrivedPayload = { rideId: updatedRide.id, status: updatedRide.status };
+    this.socketGateway.sendRideStatus(ride.riderId, 'ride-arrived', arrivedPayload);
+    this.socketGateway.broadcastToRide(updatedRide.id, 'ride-arrived', arrivedPayload);
     return {
       message: 'Driver has arrived',
       ride: updatedRide,
@@ -244,6 +243,14 @@ export class RideService {
 
     this.socketGateway.sendRideStatus(
       ride.riderId,
+      'ride-started',
+      {
+        rideId: updatedRide.id,
+        status: updatedRide.status,
+      },
+    );
+    this.socketGateway.broadcastToRide(
+      updatedRide.id,
       'ride-started',
       {
         rideId: updatedRide.id,
@@ -334,14 +341,9 @@ export class RideService {
   },
 });
 
-this.socketGateway.sendRideStatus(
-  updatedRide.riderId,
-  'ride-completed',
-  {
-    rideId: updatedRide.id,
-    status: updatedRide.status,
-  },
-);
+const completedPayload = { rideId: updatedRide.id, status: updatedRide.status };
+this.socketGateway.sendRideStatus(updatedRide.riderId, 'ride-completed', completedPayload);
+this.socketGateway.broadcastToRide(updatedRide.id, 'ride-completed', completedPayload);
     await this.notificationService.createNotification(
       updatedRide.riderId,
       'Ride Completed',
@@ -371,9 +373,10 @@ this.socketGateway.sendRideStatus(
       );
     }
 
-    if (ride.status !== RideStatus.PENDING) {
+    const cancellableStatuses = [RideStatus.PENDING, RideStatus.ACCEPTED, RideStatus.DRIVER_ARRIVED] as RideStatus[];
+    if (!cancellableStatuses.includes(ride.status)) {
       throw new BadRequestException(
-        'Ride cannot be cancelled after a driver accepts it',
+        'Ride cannot be cancelled after it has started',
       );
     }
 
@@ -387,6 +390,14 @@ this.socketGateway.sendRideStatus(
     });
 this.socketGateway.sendRideStatus(
   updatedRide.riderId,
+  'ride-cancelled',
+  {
+    rideId: updatedRide.id,
+    status: updatedRide.status,
+  },
+);
+this.socketGateway.broadcastToRide(
+  updatedRide.id,
   'ride-cancelled',
   {
     rideId: updatedRide.id,
@@ -469,6 +480,14 @@ this.socketGateway.sendRideStatus(
     status: updatedRide.status,
   },
 );
+    this.socketGateway.broadcastToRide(
+  updatedRide.id,
+  'ride-cancelled',
+  {
+    rideId: updatedRide.id,
+    status: updatedRide.status,
+  },
+);
 
     await this.notificationService.createNotification(
       ride.riderId,
@@ -500,6 +519,30 @@ this.socketGateway.sendRideStatus(
         createdAt: 'desc',
       },
     });
+  }
+
+  async deleteRide(rideId: string, userId: string) {
+    const ride = await this.prisma.ride.findUnique({
+      where: { id: rideId },
+      include: { driver: true },
+    });
+
+    if (!ride) throw new BadRequestException('Ride not found');
+
+    const isRider = ride.riderId === userId;
+    const isDriver = ride.driver?.userId === userId;
+
+    if (!isRider && !isDriver) {
+      throw new BadRequestException('Not authorized to delete this ride');
+    }
+
+    const activeStatuses = ['PENDING', 'ACCEPTED', 'DRIVER_ARRIVED', 'STARTED'];
+    if (activeStatuses.includes(ride.status)) {
+      throw new BadRequestException('Cannot delete an active ride');
+    }
+
+    await this.prisma.ride.delete({ where: { id: rideId } });
+    return { message: 'Ride deleted successfully' };
   }
 
   async getMyTrips(userId: string) {

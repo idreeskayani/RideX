@@ -3,9 +3,12 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { getAccessToken } from '../../utils/storage';
 import { jwtDecode } from 'jwt-decode';
+import { getActiveRide } from '../../api/ride';
+import { navigateToActiveRide } from '../../utils/navigateToActiveRide';
 
 interface JwtPayload {
   exp: number;
+  role?: string;
 }
 
 const SplashScreen = ({ navigation }: any) => {
@@ -14,23 +17,26 @@ const SplashScreen = ({ navigation }: any) => {
   }, []);
 
   const checkAuth = async () => {
-    // minimum splash time
     await new Promise<void>(resolve => setTimeout(() => resolve(), 1800));
 
     try {
       const token = await getAccessToken();
-
-      if (!token) {
-        navigation.replace('Auth');
-        return;
-      }
+      if (!token) { navigation.replace('Auth'); return; }
 
       const decoded = jwtDecode<JwtPayload>(token);
       const isExpired = decoded.exp * 1000 < Date.now();
+      if (isExpired) { navigation.replace('Auth'); return; }
 
-      navigation.replace(isExpired ? 'Auth' : 'Main');
-    } catch (e) {
-      // invalid token
+      const role = decoded.role ?? 'RIDER';
+      try {
+        const activeRide = await getActiveRide(role);
+        if (!navigateToActiveRide(navigation, activeRide, role)) {
+          navigation.replace('Main', { role });
+        }
+      } catch {
+        navigation.replace('Main', { role });
+      }
+    } catch {
       navigation.replace('Auth');
     }
   };
