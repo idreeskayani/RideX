@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { DriverService } from '../driver/driver.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RideStatus } from '@prisma/client';
+import { ChatService } from '../chat/chat.service';
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -34,6 +35,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly driverService: DriverService,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly chatService: ChatService,
   ) {}
 
   handleConnection(client: Socket) {
@@ -70,6 +72,18 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleJoinRide(@ConnectedSocket() client: Socket, @MessageBody() data: { rideId: string }) {
     client.join(`ride-${data.rideId}`);
     console.log(`${client.id} joined ride-${data.rideId}`);
+  }
+
+  @SubscribeMessage('chat-message')
+  async handleChatMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { chatId: string; rideId: string; text: string },
+  ) {
+    const userId = client.data.user?.sub;
+    if (!userId) return;
+
+    const message = await this.chatService.sendMessage(data.chatId, userId, data.text);
+    this.server.to(`ride-${data.rideId}`).emit('chat-message', message);
   }
 
   @SubscribeMessage('driver-location')

@@ -10,6 +10,8 @@ import { NotificationModule } from './notification/notification.module';
 import { SocketModule } from './socket/socket.module';
 import { PaymentModule } from './payment/payment.module';
 import {ConfigModule} from "@nestjs/config";
+import { MailModule } from './mail/mail.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import {ConfigModule} from "@nestjs/config";
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    MailModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

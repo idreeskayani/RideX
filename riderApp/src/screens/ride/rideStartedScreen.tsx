@@ -7,11 +7,13 @@ import {
   Marker,
   UserLocation,
 } from '@maplibre/maplibre-react-native';
+import { TouchableOpacity } from 'react-native';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
 import { connectSocket } from '../../services/socket';
 import MapRoute from '../../components/MapRoute';
 import QuickLogoutButton from '../../components/QuickLogoutButton';
+import { Linking } from 'react-native';
 import {
   fetchOSRMRoute,
   remainingRouteGeometry,
@@ -85,6 +87,15 @@ export default function RideStartedScreen({ route, navigation }: any) {
     setRemainingGeom({ type: 'LineString', coordinates: r.coordinates });
     setEta(formatETA(r.durationSeconds));
     setDistLeft(formatDistance(r.distanceMeters));
+  }, [destination]);
+
+  const handleNavigate = useCallback(() => {
+    if (!destination) return;
+    const url = `google.navigation:q=${destination.latitude},${destination.longitude}`;
+    Linking.canOpenURL(url).then(supported => {
+      const fallback = `https://www.google.com/maps/dir/?api=1&destination=${destination.latitude},${destination.longitude}&travelmode=driving`;
+      Linking.openURL(supported ? url : fallback);
+    });
   }, [destination]);
 
   useEffect(() => {
@@ -194,6 +205,17 @@ export default function RideStartedScreen({ route, navigation }: any) {
           <Text style={styles.fareLabel}>Total Fare</Text>
           <Text style={styles.fareValue}>PKR {ride?.fare ?? '—'}</Text>
         </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.chatButton]}
+            onPress={() => navigation.navigate('Chat', { rideId, otherName: ride?.driver?.user?.fullName ?? 'Driver' })}>
+            <Text style={styles.chatButtonText}>💬 Chat</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionButton, styles.navigateButton]} onPress={handleNavigate}>
+            <Text style={styles.navigateButtonText}>🗺️ Navigate</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -232,6 +254,12 @@ const styles = StyleSheet.create({
   },
   fareLabel: { fontSize: 14, color: '#6B7280' },
   fareValue: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  actionButton: { flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  chatButton: { backgroundColor: '#EFF6FF' },
+  chatButtonText: { fontSize: 15, color: '#2563EB', fontWeight: '600' },
+  navigateButton: { backgroundColor: '#F0FDF4' },
+  navigateButtonText: { fontSize: 15, color: '#16A34A', fontWeight: '600' },
   carMarker: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF',
     alignItems: 'center', justifyContent: 'center', elevation: 4,

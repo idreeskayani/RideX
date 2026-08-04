@@ -10,6 +10,8 @@ import RideStartedScreen from '../screens/ride/rideStartedScreen';
 import RatingScreen from '../screens/rating/ratingScreen';
 import DriverRideScreen from '../screens/ride/DriverRideScreen';
 import DriverStartedScreen from '../screens/ride/DriverStartedScreen';
+import DriverRegisterScreen from '../screens/home/driverRegisterScreen';
+import ChatScreen from '../screens/ride/chatScreen';
 
 const RiderStack = createNativeStackNavigator();
 const DriverStack = createNativeStackNavigator();
@@ -39,6 +41,7 @@ function RiderNavigator({ initialScreen, initialParams }: { initialScreen?: stri
       <RiderStack.Screen name="DriverArrived" component={DriverArrivedScreen} />
       <RiderStack.Screen name="RideStarted"   component={RideStartedScreen} />
       <RiderStack.Screen name="Rating"        component={RatingScreen} />
+      <RiderStack.Screen name="Chat"          component={ChatScreen} />
     </RiderStack.Navigator>
   );
 }
@@ -61,9 +64,11 @@ function DriverNavigator({ initialScreen, initialParams }: { initialScreen?: str
       ref={stackRef}
       screenOptions={{ headerShown: false }}
     >
-      <DriverStack.Screen name="Tabs"          component={DriverTabNavigator} />
-      <DriverStack.Screen name="DriverRide"    component={DriverRideScreen} />
-      <DriverStack.Screen name="DriverStarted" component={DriverStartedScreen} />
+      <DriverStack.Screen name="Tabs"            component={DriverTabNavigator} />
+      <DriverStack.Screen name="DriverRegister"  component={DriverRegisterScreen} />
+      <DriverStack.Screen name="DriverRide"      component={DriverRideScreen} />
+      <DriverStack.Screen name="DriverStarted"   component={DriverStartedScreen} />
+      <DriverStack.Screen name="Chat"            component={ChatScreen} />
     </DriverStack.Navigator>
   );
 }

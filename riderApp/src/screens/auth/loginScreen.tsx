@@ -43,16 +43,14 @@ const LoginScreen = ({ navigation }: any) => {
       }
     } catch (error: any) {
       setLoading(false);
-      console.log("STATUS:", error.response?.status);
-      console.log("DATA:", error.response?.data);
-      console.log("MESSAGE:", 
-       
-      error.message);
+      const message: string = error.response?.data?.message ?? '';
 
-      Alert.alert(
-        "Login Failed",
-        JSON.stringify(error.response?.data ?? error.message)
-      );
+      if (message.toLowerCase().includes('verify your email')) {
+        navigation.navigate('VerifyEmail', { email: email.trim() });
+        return;
+      }
+
+      Alert.alert('Login Failed', message || error.message);
     }
   };
 
@@ -88,6 +86,12 @@ const LoginScreen = ({ navigation }: any) => {
           onPress={onLogin}
           loading={loading}
           style={{ marginTop: 8 }}
+        />
+
+        <CustomButton
+          title="Forgot Password?"
+          variant="ghost"
+          onPress={() => navigation.navigate('ForgotPassword')}
         />
 
         <CustomButton

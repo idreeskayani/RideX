@@ -14,6 +14,7 @@ import { cancelRide } from '../../api/ride';
 import api from '../../api/axios';
 import MapRoute from '../../components/MapRoute';
 import QuickLogoutButton from '../../components/QuickLogoutButton';
+import { Linking } from 'react-native';
 import {
   fetchOSRMRoute,
   remainingRouteGeometry,
@@ -162,6 +163,15 @@ export default function RideAcceptedScreen({ route, navigation }: any) {
     navigation.replace('Tabs', { screen: 'Home' });
   }, [rideId, navigation]);
 
+  const handleNavigate = useCallback(() => {
+    if (!pickup) return;
+    const url = `google.navigation:q=${pickup.latitude},${pickup.longitude}`;
+    Linking.canOpenURL(url).then(supported => {
+      const fallback = `https://www.google.com/maps/dir/?api=1&destination=${pickup.latitude},${pickup.longitude}&travelmode=driving`;
+      Linking.openURL(supported ? url : fallback);
+    });
+  }, [pickup]);
+
   const center = driverPos ?? pickup;
 
   return (
@@ -195,6 +205,11 @@ export default function RideAcceptedScreen({ route, navigation }: any) {
       </MapLibre>
 
       <QuickLogoutButton />
+
+      <TouchableOpacity style={styles.navBtn} onPress={handleNavigate}>
+        <Text style={styles.navBtnIcon}>🧭</Text>
+        <Text style={styles.navBtnText}>Navigate</Text>
+      </TouchableOpacity>
 
       {/* ETA pill */}
       {(eta || distLeft) && (
@@ -236,6 +251,12 @@ export default function RideAcceptedScreen({ route, navigation }: any) {
 
         <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
           <Text style={styles.cancelButtonText}>Cancel Ride</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.chatButton}
+          onPress={() => navigation.navigate('Chat', { rideId, otherName: ride?.driver?.user?.fullName ?? 'Driver' })}>
+          <Text style={styles.chatButtonText}>💬 Chat with Driver</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -293,6 +314,14 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingVertical: 13, alignItems: 'center',
   },
   cancelButtonText: { fontSize: 15, color: '#EF4444', fontWeight: '600' },
+  chatButton: {
+    marginTop: 8,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  chatButtonText: { fontSize: 15, color: '#2563EB', fontWeight: '600' },
   carMarker: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF',
     alignItems: 'center', justifyContent: 'center', elevation: 4,
@@ -304,4 +333,21 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#2563EB',
   },
   pickupDotInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#2563EB' },
+  navBtn: {
+    position: 'absolute',
+    bottom: 320,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  navBtnIcon: { fontSize: 20 },
+  navBtnText: { fontSize: 11, fontWeight: '700', color: '#111827', marginTop: 2 },
 });

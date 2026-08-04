@@ -22,6 +22,7 @@ import Geolocation from '@react-native-community/geolocation';
 import { getAvailableRides, acceptRide } from '../../api/ride';
 import api from '../../api/axios';
 import QuickLogoutButton from '../../components/QuickLogoutButton';
+import { getDriverProfile } from '../../api/driver';
 
 const ZOOM = 13;
 const POLL_INTERVAL_MS = 8000;
@@ -109,6 +110,14 @@ export default function DriverHomeScreen({ navigation }: any) {
   const [togglingOnline, setTogglingOnline] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchId = useRef<number | null>(null);
+
+  // ── Check driver profile ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    getDriverProfile().catch(() => {
+      navigation.replace('DriverRegister');
+    });
+  }, []);
 
   // ── GPS ───────────────────────────────────────────────────────────────────
 

@@ -33,9 +33,7 @@ const RegisterScreen = ({ navigation }: any) => {
         password,
       });
 
-      Alert.alert('Success', 'Account created! Please login', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      navigation.navigate('VerifyEmail', { email: email.trim() });
     } catch (error: any) {
       Alert.alert(
         'Error',

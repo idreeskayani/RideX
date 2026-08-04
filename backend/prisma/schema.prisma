@@ -34,10 +34,14 @@ model User {
 
   refreshTokenId String?
 
-  driver Driver?
+  // EMAIL OTP
+  emailOtp          String?
+  emailOtpExpiresAt DateTime?
 
-  riderRides Ride[]   @relation("RiderRides")
-  ratings    Rating[]
+  driver Driver?
+messages Message[]
+  riderRides Ride[] @relation("RiderRides")
+  ratings Rating[]
   notifications Notification[]
 
   createdAt DateTime @default(now())
@@ -102,6 +106,7 @@ model Ride {
 
   riderId String
   rider   User   @relation("RiderRides", fields: [riderId], references: [id])
+  chat Chat?
 
   driverId String?
   driver   Driver? @relation("DriverRides", fields: [driverId], references: [id])
@@ -110,6 +115,31 @@ model Ride {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+model Chat {
+  id        String   @id @default(uuid())
+
+  rideId    String   @unique
+  ride      Ride     @relation(fields: [rideId], references: [id])
+
+  messages  Message[]
+
+  createdAt DateTime @default(now())
+}
+model Message {
+  id        String   @id @default(uuid())
+
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id])
+
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+
+  text      String
+
+  isRead    Boolean  @default(false)
+
+  createdAt DateTime @default(now())
 }
 
 model Rating {

@@ -22,6 +22,8 @@ import {
 } from '../../utils/navigation';
 import { startRide, cancelRideByDriver } from '../../api/ride';
 import QuickLogoutButton from '../../components/QuickLogoutButton';
+import { Linking } from 'react-native';
+
 
 const ZOOM = 15;
 const RECALC_DISTANCE_M = 20;
@@ -224,6 +226,15 @@ export default function DriverRideScreen({ route, navigation }: any) {
     }
   }, [rideId, ride, navigation]);
 
+  const handleNavigate = useCallback(() => {
+    const target = arrivedRef.current ? destination : pickup;
+    const url = `google.navigation:q=${target.latitude},${target.longitude}`;
+    Linking.canOpenURL(url).then(supported => {
+      const fallback = `https://www.google.com/maps/dir/?api=1&destination=${target.latitude},${target.longitude}&travelmode=driving`;
+      Linking.openURL(supported ? url : fallback);
+    });
+  }, [arrived]);
+
   return (
     <View style={styles.container}>
       <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/liberty">
@@ -262,6 +273,11 @@ export default function DriverRideScreen({ route, navigation }: any) {
       </MapLibre>
 
       <QuickLogoutButton />
+
+      <TouchableOpacity style={styles.navBtn} onPress={handleNavigate}>
+        <Text style={styles.navBtnIcon}>🧭</Text>
+        <Text style={styles.navBtnText}>Navigate</Text>
+      </TouchableOpacity>
 
       {(eta || distLeft) && (
         <View style={styles.etaPill}>
@@ -314,6 +330,12 @@ export default function DriverRideScreen({ route, navigation }: any) {
               <Text style={styles.cancelButtonText}>
                 {isCancelling ? 'Cancelling…' : 'Cancel Ride'}
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={() => navigation.navigate('Chat', { rideId, otherName: ride.rider?.fullName ?? 'Rider' })}>
+              <Text style={styles.chatButtonText}>💬 Chat with Rider</Text>
             </TouchableOpacity>
           </>
         )}
@@ -377,6 +399,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   cancelButtonText: { fontSize: 15, fontWeight: '700', color: '#DC2626' },
+  chatButton: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  chatButtonText: { fontSize: 15, color: '#2563EB', fontWeight: '600' },
   carMarker: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF',
     alignItems: 'center', justifyContent: 'center', elevation: 4,
@@ -390,4 +420,21 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#2563EB',
   },
   pickupDotInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#2563EB' },
+  navBtn: {
+    position: 'absolute',
+    bottom: 320,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  navBtnIcon: { fontSize: 20 },
+  navBtnText: { fontSize: 11, fontWeight: '700', color: '#111827', marginTop: 2 },
 });

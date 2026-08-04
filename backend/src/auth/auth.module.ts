@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './strategies/jwt.strategy/jwt.strategy';
 import {RolesGuard} from './guards/roles/roles.guard';
+import {MailModule} from "../mail/mail.module";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import {RolesGuard} from './guards/roles/roles.guard';
         expiresIn: process.env.JWT_EXPIRES_IN as any,
       },
     }),
+    MailModule,
   ],
   controllers: [AuthController],
   providers: [

@@ -22,6 +22,7 @@ import {
   type RouteResult,
 } from '../../utils/navigation';
 import api from '../../api/axios';
+import { Linking } from 'react-native';
 
 const ZOOM = 15;
 const RECALC_DISTANCE_M = 20;
@@ -207,6 +208,15 @@ export default function DriverStartedScreen({ route, navigation }: any) {
     );
   }, [rideId, navigation]);
 
+  const handleNavigate = useCallback(() => {
+    const { latitude, longitude } = destinationRef.current;
+    const url = `google.navigation:q=${latitude},${longitude}`;
+    Linking.canOpenURL(url).then(supported => {
+      const fallback = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+      Linking.openURL(supported ? url : fallback);
+    });
+  }, []);
+
   const destination = destinationRef.current;
 
   return (
@@ -235,6 +245,11 @@ export default function DriverStartedScreen({ route, navigation }: any) {
       </MapLibre>
 
       <QuickLogoutButton />
+
+      <TouchableOpacity style={styles.navBtn} onPress={handleNavigate}>
+        <Text style={styles.navBtnIcon}>🧭</Text>
+        <Text style={styles.navBtnText}>Navigate</Text>
+      </TouchableOpacity>
 
       {(eta || distLeft) && (
         <View style={styles.etaPill}>
@@ -279,6 +294,12 @@ export default function DriverStartedScreen({ route, navigation }: any) {
             ? <ActivityIndicator color="#fff" />
             : <Text style={styles.completeButtonText}>Complete Ride ✅</Text>
           }
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.chatButton}
+          onPress={() => navigation.navigate('Chat', { rideId, otherName: ride.rider?.fullName ?? 'Rider' })}>
+          <Text style={styles.chatButtonText}>💬 Chat with Rider</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -329,4 +350,29 @@ const styles = StyleSheet.create({
   },
   completeButtonDisabled: { opacity: 0.6 },
   completeButtonText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  chatButton: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  chatButtonText: { fontSize: 15, color: '#2563EB', fontWeight: '600' },
+  navBtn: {
+    position: 'absolute',
+    bottom: 320,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  navBtnIcon: { fontSize: 20 },
+  navBtnText: { fontSize: 11, fontWeight: '700', color: '#111827', marginTop: 2 },
 });
