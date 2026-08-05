@@ -3,11 +3,12 @@ import {
   Controller,
   Post,
   Patch,
+  Delete,
   Param,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Query} from '@nestjs/common';
+import { Query } from '@nestjs/common';
 import { RideService } from './ride.service';
 import { DriverService } from "../driver/driver.service";
 import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
@@ -57,7 +58,7 @@ export class RideController {
     );
   }
   @UseGuards(JwtAuthGuard)
-  @Patch('start/:rideId')
+  @Patch(':rideId/start')
   startRide(
     @Req() req,
     @Param('rideId') rideId: string,
@@ -124,10 +125,34 @@ export class RideController {
   getNearbyDrivers(
     @Query('latitude') latitude: string,
     @Query('longitude') longitude: string,
+    @Query('category') category: string,
   ) {
     return this.rideService.getNearbyDrivers(
       Number(latitude),
       Number(longitude),
+      category,
     );
+  }
+
+  @Patch(':rideId/arrive')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.DRIVER)
+arriveRide(
+  @Param('rideId') rideId: string,
+  @Req() req,
+) {
+  return this.rideService.arriveRide(
+    rideId,
+    req.user.userId,
+  );
+}
+
+  @Delete(':rideId')
+  @UseGuards(JwtAuthGuard)
+  deleteRide(
+    @Param('rideId') rideId: string,
+    @Req() req,
+  ) {
+    return this.rideService.deleteRide(rideId, req.user.userId);
   }
 }

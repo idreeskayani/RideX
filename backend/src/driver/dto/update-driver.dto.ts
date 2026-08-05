@@ -1,9 +1,10 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsEnum } from 'class-validator';
+import { RideCategory } from './create-driver.dto';
 
 export class UpdateDriverDto {
   @IsOptional()
-  @IsString()
-  vehicleType?: string;
+  @IsEnum(RideCategory)
+  vehicleType?: RideCategory;
 
   @IsOptional()
   @IsString()

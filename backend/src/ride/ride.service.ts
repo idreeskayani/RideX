@@ -4,12 +4,14 @@ import { CreateRideDto } from './dto/create-ride.dto';
 import { BadRequestException } from '@nestjs/common';
 import { DriverStatus, RideStatus } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
+import { SocketGateway } from 'src/socket/socket.gateway';
 
 @Injectable()
 export class RideService {
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
+    private socketGateway: SocketGateway,
   ) { }
   async requestRide(
     userId: string,
@@ -21,6 +23,11 @@ export class RideService {
         pickup: dto.pickup,
         destination: dto.destination,
         fare: dto.fare,
+        category: dto.category ?? 'MINI',
+        pickupLat: dto.pickupLat,
+        pickupLng: dto.pickupLng,
+        destinationLat: dto.destinationLat,
+        destinationLng: dto.destinationLng,
       },
     });
 
@@ -118,8 +125,79 @@ export class RideService {
       'Ride Accepted',
       'Your ride has been accepted by the driver.',
     );
+    this.socketGateway.sendRideStatus(
+      updatedRide.riderId,
+      'ride-accepted',
+      {
+        rideId: updatedRide.id,
+        status: updatedRide.status,
+      },
+    );
 
     return updatedRide;
+  }
+
+  async arriveRide(
+    rideId: string,
+    userId: string,
+  ) {
+    const driver = await this.prisma.driver.findUnique({
+      where: {
+        userId,
+      },
+    });
+
+    if (!driver) {
+      throw new BadRequestException(
+        'Driver profile not found',
+      );
+    }
+
+    const ride = await this.prisma.ride.findUnique({
+      where: {
+        id: rideId,
+      },
+    });
+
+    if (!ride) {
+      throw new BadRequestException(
+        'Ride not found',
+      );
+    }
+
+    if (ride.driverId !== driver.id) {
+      throw new BadRequestException(
+        'This ride is not assigned to you',
+      );
+    }
+
+    if (ride.status !== RideStatus.ACCEPTED) {
+      throw new BadRequestException(
+        'Ride must be accepted first',
+      );
+    }
+
+    const updatedRide = await this.prisma.ride.update({
+      where: {
+        id: rideId,
+      },
+      data: {
+        status: RideStatus.DRIVER_ARRIVED,
+      },
+    });
+
+    await this.notificationService.createNotification(
+      ride.riderId,
+      'Driver Arrived',
+      'Your driver has arrived at the pickup location.',
+    );
+    const arrivedPayload = { rideId: updatedRide.id, status: updatedRide.status };
+    this.socketGateway.sendRideStatus(ride.riderId, 'ride-arrived', arrivedPayload);
+    this.socketGateway.broadcastToRide(updatedRide.id, 'ride-arrived', arrivedPayload);
+    return {
+      message: 'Driver has arrived',
+      ride: updatedRide,
+    };
   }
 
   async startRide(rideId: string, userId: string) {
@@ -148,10 +226,9 @@ export class RideService {
         'This ride is not assigned to you',
       );
     }
-
-    if (ride.status !== RideStatus.ACCEPTED) {
+    if (ride.status !== RideStatus.DRIVER_ARRIVED) {
       throw new BadRequestException(
-        'Ride is not accepted yet',
+        'Driver must arrive before starting the ride',
       );
     }
 
@@ -163,6 +240,23 @@ export class RideService {
         status: RideStatus.STARTED,
       },
     });
+
+    this.socketGateway.sendRideStatus(
+      ride.riderId,
+      'ride-started',
+      {
+        rideId: updatedRide.id,
+        status: updatedRide.status,
+      },
+    );
+    this.socketGateway.broadcastToRide(
+      updatedRide.id,
+      'ride-started',
+      {
+        rideId: updatedRide.id,
+        status: updatedRide.status,
+      },
+    );
 
     await this.notificationService.createNotification(
       updatedRide.riderId,
@@ -218,19 +312,38 @@ export class RideService {
     }
 
     // Complete ride
-    const updatedRide = await this.prisma.ride.update({
-      where: {
-        id: rideId,
+   const updatedRide = await this.prisma.ride.update({
+  where: {
+    id: rideId,
+  },
+  data: {
+    status: RideStatus.COMPLETED,
+  },
+  include: {
+    rider: {
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
       },
-      data: {
-        status: RideStatus.COMPLETED,
-      },
+    },
+    driver: {
       include: {
-        rider: true,
-        driver: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
       },
-    });
+    },
+  },
+});
 
+const completedPayload = { rideId: updatedRide.id, status: updatedRide.status };
+this.socketGateway.sendRideStatus(updatedRide.riderId, 'ride-completed', completedPayload);
+this.socketGateway.broadcastToRide(updatedRide.id, 'ride-completed', completedPayload);
     await this.notificationService.createNotification(
       updatedRide.riderId,
       'Ride Completed',
@@ -260,9 +373,10 @@ export class RideService {
       );
     }
 
-    if (ride.status !== RideStatus.PENDING) {
+    const cancellableStatuses = [RideStatus.PENDING, RideStatus.ACCEPTED, RideStatus.DRIVER_ARRIVED] as RideStatus[];
+    if (!cancellableStatuses.includes(ride.status)) {
       throw new BadRequestException(
-        'Ride cannot be cancelled after a driver accepts it',
+        'Ride cannot be cancelled after it has started',
       );
     }
 
@@ -274,7 +388,22 @@ export class RideService {
         status: RideStatus.CANCELLED_BY_RIDER,
       },
     });
-
+this.socketGateway.sendRideStatus(
+  updatedRide.riderId,
+  'ride-cancelled',
+  {
+    rideId: updatedRide.id,
+    status: updatedRide.status,
+  },
+);
+this.socketGateway.broadcastToRide(
+  updatedRide.id,
+  'ride-cancelled',
+  {
+    rideId: updatedRide.id,
+    status: updatedRide.status,
+  },
+);
     if (ride.driverId) {
       const driver = await this.prisma.driver.findUnique({
         where: {
@@ -343,6 +472,22 @@ export class RideService {
         driverId: null,
       },
     });
+    this.socketGateway.sendRideStatus(
+  updatedRide.riderId,
+  'ride-cancelled',
+  {
+    rideId: updatedRide.id,
+    status: updatedRide.status,
+  },
+);
+    this.socketGateway.broadcastToRide(
+  updatedRide.id,
+  'ride-cancelled',
+  {
+    rideId: updatedRide.id,
+    status: updatedRide.status,
+  },
+);
 
     await this.notificationService.createNotification(
       ride.riderId,
@@ -374,6 +519,30 @@ export class RideService {
         createdAt: 'desc',
       },
     });
+  }
+
+  async deleteRide(rideId: string, userId: string) {
+    const ride = await this.prisma.ride.findUnique({
+      where: { id: rideId },
+      include: { driver: true },
+    });
+
+    if (!ride) throw new BadRequestException('Ride not found');
+
+    const isRider = ride.riderId === userId;
+    const isDriver = ride.driver?.userId === userId;
+
+    if (!isRider && !isDriver) {
+      throw new BadRequestException('Not authorized to delete this ride');
+    }
+
+    const activeStatuses = ['PENDING', 'ACCEPTED', 'DRIVER_ARRIVED', 'STARTED'];
+    if (activeStatuses.includes(ride.status)) {
+      throw new BadRequestException('Cannot delete an active ride');
+    }
+
+    await this.prisma.ride.delete({ where: { id: rideId } });
+    return { message: 'Ride deleted successfully' };
   }
 
   async getMyTrips(userId: string) {
@@ -408,48 +577,46 @@ export class RideService {
   }
 
   async getNearbyDrivers(
-  riderLat: number,
-  riderLng: number,
-) {
-  const drivers = await this.prisma.driver.findMany({
-    where: {
-      status: DriverStatus.APPROVED,
-      isOnline: true,
-      latitude: {
-        not: null,
+    riderLat: number,
+    riderLng: number,
+    category: string,
+  ) {
+    const drivers = await this.prisma.driver.findMany({
+      where: {
+        status: DriverStatus.APPROVED,
+        isOnline: true,
+        vehicleType: category as any,
+        latitude: { not: null },
+        longitude: { not: null },
       },
-      longitude: {
-        not: null,
-      },
-    },
-    select: {
-      id: true,
-      vehicleType: true,
-      vehicleModel: true,
-      vehicleNumber: true,
-      latitude: true,
-      longitude: true,
-      user: {
-        select: {
-          fullName: true,
-          profileImage: true,
+      select: {
+        id: true,
+        vehicleType: true,
+        vehicleModel: true,
+        vehicleNumber: true,
+        latitude: true,
+        longitude: true,
+        user: {
+          select: {
+            fullName: true,
+            profileImage: true,
+          },
         },
       },
-    },
-  });
-  return drivers
-  .map((driver) => ({
-    ...driver,
-    distance: this.calculateDistance(
-      riderLat,
-      riderLng,
-      driver.latitude!,
-      driver.longitude!,
-    ),
-  }))
-  .filter((driver) => driver.distance <= 5)
-  .sort((a, b) => a.distance - b.distance);
-}
+    });
+    return drivers
+      .map((driver) => ({
+        ...driver,
+        distance: this.calculateDistance(
+          riderLat,
+          riderLng,
+          driver.latitude!,
+          driver.longitude!,
+        ),
+      }))
+      .filter((driver) => driver.distance <= 5)
+      .sort((a, b) => a.distance - b.distance);
+  }
 
   private calculateDistance(
     lat1: number,

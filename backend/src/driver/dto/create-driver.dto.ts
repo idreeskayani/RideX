@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsEnum } from 'class-validator';
+
+export enum RideCategory {
+  MINI = 'MINI',
+  RIDE_AC = 'RIDE_AC',
+  PREMIUM = 'PREMIUM',
+}
 
 export class CreateDriverDto {
   @IsString()
@@ -9,9 +15,9 @@ export class CreateDriverDto {
   @IsNotEmpty()
   licenseNumber!: string;
 
-  @IsString()
+  @IsEnum(RideCategory)
   @IsNotEmpty()
-  vehicleType!: string;
+  vehicleType!: RideCategory;
 
   @IsString()
   @IsNotEmpty()
