@@ -1,8 +1,12 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Geolocation from '@react-native-community/geolocation';
+import { connectSocket } from '../services/socket';
+import { getDriverProfile } from '../api/driver';
 
 import RiderTabNavigator from './riderTabNavigator';
 import DriverTabNavigator from './driverTabNavigator';
+import AdminTabNavigator from './adminTabNavigator';
 import RideSearchingScreen from '../screens/ride/rideSearchingScreen';
 import RideAcceptedScreen from '../screens/ride/rideAcceptedScreen';
 import DriverArrivedScreen from '../screens/ride/DriverArrivedScreen';
@@ -49,6 +53,10 @@ function RiderNavigator({ initialScreen, initialParams }: { initialScreen?: stri
 function DriverNavigator({ initialScreen, initialParams }: { initialScreen?: string; initialParams?: any }) {
   const stackRef = useRef<any>(null);
   const didNavigate = useRef(false);
+  const [isOnline, setIsOnline] = useState(false);
+  const latestPos = useRef<{ latitude: number; longitude: number } | null>(null);
+  const watchId = useRef<number | null>(null);
+  const emitRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!initialScreen || initialScreen === 'Tabs' || didNavigate.current) return;
@@ -59,12 +67,44 @@ function DriverNavigator({ initialScreen, initialParams }: { initialScreen?: str
     return () => clearTimeout(t);
   }, []);
 
+  // Track GPS position persistently
+  useEffect(() => {
+    watchId.current = Geolocation.watchPosition(
+      pos => { latestPos.current = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }; },
+      () => {},
+      { enableHighAccuracy: true, distanceFilter: 10, interval: 5000 },
+    );
+    return () => { if (watchId.current !== null) Geolocation.clearWatch(watchId.current); };
+  }, []);
+
+  // Sync online status once on mount
+  useEffect(() => {
+    getDriverProfile().then(p => setIsOnline(p.isOnline ?? false)).catch(() => {});
+  }, []);
+
+  // Emit location every 5s while online, stop when offline
+  useEffect(() => {
+    if (emitRef.current) clearInterval(emitRef.current);
+    if (!isOnline) return;
+    connectSocket().then(socket => {
+      emitRef.current = setInterval(() => {
+        if (latestPos.current) {
+          socket.emit('update-location', latestPos.current);
+        }
+      }, 5000);
+    });
+    return () => { if (emitRef.current) clearInterval(emitRef.current); };
+  }, [isOnline]);
+
   return (
     <DriverStack.Navigator
       ref={stackRef}
       screenOptions={{ headerShown: false }}
     >
-      <DriverStack.Screen name="Tabs"            component={DriverTabNavigator} />
+      <DriverStack.Screen
+        name="Tabs"
+        children={() => <DriverTabNavigator onOnlineChange={setIsOnline} />}
+      />
       <DriverStack.Screen name="DriverRegister"  component={DriverRegisterScreen} />
       <DriverStack.Screen name="DriverRide"      component={DriverRideScreen} />
       <DriverStack.Screen name="DriverStarted"   component={DriverStartedScreen} />
@@ -78,6 +118,9 @@ const MainNavigator = ({ route }: any) => {
   const initialScreen = route?.params?.screen;
   const initialParams = route?.params?.params;
 
+  if (role === 'ADMIN') {
+    return <AdminTabNavigator />;
+  }
   if (role === 'DRIVER') {
     return <DriverNavigator initialScreen={initialScreen} initialParams={initialParams} />;
   }

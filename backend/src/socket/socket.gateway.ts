@@ -86,6 +86,19 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`ride-${data.rideId}`).emit('chat-message', message);
   }
 
+  @SubscribeMessage('update-location')
+  async handleUpdateLocation(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { latitude: number; longitude: number },
+  ) {
+    const userId = client.data.user?.sub;
+    if (!userId) return;
+    await this.prisma.driver.updateMany({
+      where: { userId },
+      data: { latitude: data.latitude, longitude: data.longitude },
+    }).catch(() => {});
+  }
+
   @SubscribeMessage('driver-location')
   async handleDriverLocation(
     @ConnectedSocket() client: Socket,

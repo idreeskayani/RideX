@@ -17,13 +17,12 @@ import {
   Camera,
   type CameraRef,
   Marker,
-  UserLocation,
 } from '@maplibre/maplibre-react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import { setRideLocations, setRideId } from '../../redux/rideSlice';
-import { requestRide, getNearbyDrivers, type RideCategory } from '../../api/ride';
+import { requestRide, type RideCategory } from '../../api/ride';
 import QuickLogoutButton from '../../components/QuickLogoutButton';
 
 // ---------- Geolocation config (required for @react-native-community/geolocation) ----------
@@ -102,15 +101,6 @@ function estimateFare(a: Coordinates, b: Coordinates): number {
   return Math.max(50, Math.round(distKm * 25)); // base PKR 50, PKR 25/km
 }
 
-interface NearbyDriver {
-  id: string;
-  latitude: number;
-  longitude: number;
-  vehicleType: RideCategory;
-  vehicleModel: string;
-  user: { fullName: string };
-}
-
 // ---------- Ride categories ----------
 
 const CATEGORIES: {
@@ -147,7 +137,6 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
   const [suggestions, setSuggestions] = useState<PlaceResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<RideCategory>('MINI');
-  const [nearbyDrivers, setNearbyDrivers] = useState<NearbyDriver[]>([]);
 
   const [isLocating, setIsLocating] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -156,15 +145,6 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
   const panelAnim = useRef(new Animated.Value(0)).current;
   const sheetBottom = useRef(new Animated.Value(0)).current;
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ---------- Fetch nearby drivers when category or userLocation changes ----------
-
-  useEffect(() => {
-    if (!userLocation) return;
-    getNearbyDrivers(userLocation, selectedCategory)
-      .then(setNearbyDrivers)
-      .catch(() => setNearbyDrivers([]));
-  }, [selectedCategory, userLocation]);
 
   // ---------- Keyboard listeners ----------
 
@@ -337,7 +317,7 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
       const fare = getFare(selectedCategory);
       const res = await requestRide(pickupText, destinationText, fare, selectedCategory, pickup, destination);
       dispatch(setRideId(res.ride.id));
-      navigation.navigate('RideSearching', { rideId: res.ride.id });
+      navigation.navigate('RideSearching', { rideId: res.ride.id, category: selectedCategory });
     } catch {
       setLocationError('Failed to request ride. Try again.');
     } finally {
@@ -383,20 +363,6 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
               : [0, 0]
           }
         />
-
-        <UserLocation />
-
-        {nearbyDrivers.map(driver => (
-          <Marker
-            key={driver.id}
-            id={`driver-${driver.id}`}
-            lngLat={[driver.longitude, driver.latitude]}
-          >
-            <View style={styles.driverMarker}>
-              <Text style={styles.driverMarkerText}>🚗</Text>
-            </View>
-          </Marker>
-        ))}
 
         {pickup && (
           <Marker id="pickup" lngLat={[pickup.longitude, pickup.latitude]}>
@@ -707,20 +673,6 @@ const styles = StyleSheet.create({
   },
   confirmButtonDisabled: { opacity: 0.6 },
   confirmButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  driverMarker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  driverMarkerText: { fontSize: 20 },
   categoryContainer: {
     flexDirection: 'row',
     gap: 8,

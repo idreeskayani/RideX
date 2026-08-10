@@ -4,7 +4,6 @@ import {
   Map as MapLibre,
   Camera,
   Marker,
-  UserLocation,
 } from '@maplibre/maplibre-react-native';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
@@ -51,8 +50,6 @@ export default function DriverArrivedScreen({ route, navigation }: any) {
           zoom={DEFAULT_ZOOM}
           center={pickup ? [pickup.longitude, pickup.latitude] : [0, 0]}
         />
-        <UserLocation />
-
         {pickup && (
           <Marker id="pickup" lngLat={[pickup.longitude, pickup.latitude]}>
             <View style={styles.pickupDot}><View style={styles.pickupDotInner} /></View>

@@ -5,7 +5,6 @@ import {
   Camera,
   type CameraRef,
   Marker,
-  UserLocation,
 } from '@maplibre/maplibre-react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { connectSocket } from '../../services/socket';
@@ -243,8 +242,6 @@ export default function DriverRideScreen({ route, navigation }: any) {
           zoom={ZOOM}
           center={driverPos ? [driverPos.longitude, driverPos.latitude] : [pickup.longitude, pickup.latitude]}
         />
-        <UserLocation />
-
         {/* Route: blue → pickup, dark → destination after arrival */}
         {remainingGeom && (
           <MapRoute
