@@ -12,10 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
 import { logout as logoutApi } from '../../api/auth';
-import { logout as logoutAction } from '../../redux/authSlice';
+import { logout as logoutAction, loginSuccess } from '../../redux/authSlice';
 import { disconnectSocket } from '../../services/socket';
 import { CommonActions } from '@react-navigation/native';
 import api from '../../api/axios';
+import { hasDriverProfile } from '../../api/driver';
+import { saveTokens, getRefreshToken } from '../../utils/storage';
 
 export default function ProfileScreen({ navigation }: any) {
   const dispatch = useDispatch();
@@ -23,6 +25,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     api.get('/users/me')
@@ -49,6 +52,35 @@ export default function ProfileScreen({ navigation }: any) {
       },
     ]);
   }, [dispatch, navigation]);
+
+  const handleSwitchRole = useCallback(async () => {
+    const currentRole = (profile ?? authUser)?.role;
+    if (currentRole === 'RIDER') {
+      const hasProfile = await hasDriverProfile();
+      if (!hasProfile) {
+        navigation.navigate('DriverRegister');
+        return;
+      }
+    }
+    setSwitching(true);
+    try {
+      const res = await api.patch('/users/switch-role');
+      const newRole: string = res.data.role;
+      // Refresh tokens so JWT reflects new role
+      const refreshToken = await getRefreshToken();
+      const tokenRes = await api.post('/auth/refresh', { refreshToken });
+      await saveTokens(tokenRes.data.accessToken, tokenRes.data.refreshToken);
+      dispatch(loginSuccess({ token: tokenRes.data.accessToken, user: { ...(profile ?? authUser), role: newRole } }));
+      navigation.dispatch(
+        CommonActions.reset({ index: 0, routes: [{ name: 'Main', params: { role: newRole } }] })
+      );
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? 'Failed to switch role';
+      Alert.alert('Error', msg);
+    } finally {
+      setSwitching(false);
+    }
+  }, [profile, authUser, dispatch, navigation]);
 
   const user = profile ?? authUser;
   const initials = user?.fullName
@@ -90,6 +122,30 @@ export default function ProfileScreen({ navigation }: any) {
           <Divider />
           <InfoRow label="Account Status" value={user?.isVerified ? '✅ Verified' : '⏳ Unverified'} />
         </View>
+
+        {user?.role === 'DRIVER' && (
+          <TouchableOpacity
+            style={styles.editVehicleButton}
+            onPress={() => navigation.navigate('EditVehicle')}
+          >
+            <Text style={styles.editVehicleButtonText}>🚗 Edit Vehicle Details</Text>
+          </TouchableOpacity>
+        )}
+
+        {user?.role !== 'ADMIN' && (
+          <TouchableOpacity
+            style={[styles.switchButton, switching && styles.logoutButtonDisabled]}
+            onPress={handleSwitchRole}
+            disabled={switching}
+          >
+            {switching
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.switchButtonText}>
+                  {user?.role === 'RIDER' ? '🚗 Switch to Driver' : '🧍 Switch to Rider'}
+                </Text>
+            }
+          </TouchableOpacity>
+        )}
 
         {/* Logout */}
         <TouchableOpacity
@@ -164,6 +220,24 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 14, color: '#6B7280' },
   infoValue: { fontSize: 14, fontWeight: '500', color: '#111827', maxWidth: '60%', textAlign: 'right' },
   divider: { height: 1, backgroundColor: '#F3F4F6' },
+  editVehicleButton: {
+    width: '100%',
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  editVehicleButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  switchButton: {
+    width: '100%',
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  switchButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   logoutButton: {
     width: '100%',
     backgroundColor: '#EF4444',

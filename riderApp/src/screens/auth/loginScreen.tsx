@@ -55,7 +55,7 @@ const LoginScreen = ({ navigation }: any) => {
         return;
       }
 
-      Alert.alert('Login Failed', message || error.message);
+      Alert.alert('Login Failed', message || error.message || 'Unknown error');
     }
   };
 

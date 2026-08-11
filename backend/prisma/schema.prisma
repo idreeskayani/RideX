@@ -61,6 +61,10 @@ model Driver {
   vehicleModel  String
   vehicleNumber String @unique
 
+  licenseImage String?
+  cnicImage     String?
+  selfieImage   String?
+
   isOnline Boolean @default(false)
 
   latitude Float?

@@ -20,24 +20,22 @@ export class AuthService {
   ) { }
 
   async register(registerDto: RegisterDto) {
-    const { fullName, email, password } = registerDto;
+    const { fullName, email, password, phoneNumber } = registerDto;
 
     const existingUser = await this.prisma.user.findUnique({
-      where: {
-        email,
-      },
+      where: { email },
     });
 
     if (existingUser) {
       if (existingUser.isVerified) {
         throw new BadRequestException('Email already exists');
       }
-      // Unverified — resend OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       await this.prisma.user.update({
         where: { email },
         data: {
           fullName,
+          phoneNumber,
           password: await bcrypt.hash(password, 10),
           emailOtp: otp,
           emailOtpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
@@ -54,6 +52,7 @@ export class AuthService {
       data: {
         fullName,
         email,
+        phoneNumber,
         password: hashedPassword,
         emailOtp: otp,
         emailOtpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),

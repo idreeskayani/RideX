@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Patch,
   UseGuards,
   Req,
 } from '@nestjs/common';
@@ -18,6 +19,12 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   getMe(@Req() req: any) {
     return this.usersService.getMe(req.user.userId);
+  }
+
+  @Patch('switch-role')
+  @UseGuards(JwtAuthGuard)
+  switchRole(@Req() req: any) {
+    return this.usersService.switchRole(req.user.userId);
   }
 
   @Get('admin')

@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, ConflictException } from '@nestjs/common';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
@@ -24,9 +25,18 @@ export class DriverService {
       throw new BadRequestException('Driver profile already exists');
     }
 
-    const driver = await this.prisma.driver.create({
-      data: { userId, ...dto },
-    });
+    let driver;
+    try {
+      driver = await this.prisma.driver.create({
+        data: { userId, ...dto },
+      });
+    } catch (e) {
+      if (e instanceof PrismaClientKnownRequestError && e.code === 'P2002') {
+        const field = (e.meta?.target as string[])?.[0] ?? 'field';
+        throw new ConflictException(`A driver with this ${field} already exists`);
+      }
+      throw e;
+    }
 
     const admin = await this.prisma.user.findFirst({
   where: {

@@ -2,12 +2,14 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, RefreshControl,
-  Modal, ScrollView,
+  Modal, ScrollView, Image,
 } from 'react-native';
 import {
   getAdminDrivers, approveDriver, rejectDriver,
   blockDriver, unblockDriver,
 } from '../../api/admin';
+
+const BASE_URL = 'http://192.168.100.22:3000';
 
 const STATUS_FILTERS = ['ALL', 'PENDING', 'APPROVED', 'REJECTED'];
 
@@ -101,6 +103,33 @@ function DriverDetailModal({
               </View>
             ))}
           </View>
+
+          {/* Document Images */}
+          {(driver.licenseImage || driver.cnicImage || driver.selfieImage) && (
+            <View style={modal.card}>
+              <Text style={modal.docsTitle}>📎 Submitted Documents</Text>
+              <View style={modal.docsRow}>
+                {driver.licenseImage && (
+                  <View style={modal.docItem}>
+                    <Image source={{ uri: `${BASE_URL}/uploads/drivers/${driver.licenseImage}` }} style={modal.docImage} />
+                    <Text style={modal.docLabel}>License</Text>
+                  </View>
+                )}
+                {driver.cnicImage && (
+                  <View style={modal.docItem}>
+                    <Image source={{ uri: `${BASE_URL}/uploads/drivers/${driver.cnicImage}` }} style={modal.docImage} />
+                    <Text style={modal.docLabel}>CNIC</Text>
+                  </View>
+                )}
+                {driver.selfieImage && (
+                  <View style={modal.docItem}>
+                    <Image source={{ uri: `${BASE_URL}/uploads/drivers/${driver.selfieImage}` }} style={modal.docImage} />
+                    <Text style={modal.docLabel}>Selfie</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Actions */}
           <View style={modal.actions}>
@@ -355,6 +384,11 @@ const modal = StyleSheet.create({
   },
   rowLabel: { fontSize: 13, color: '#6B7280' },
   rowValue: { fontSize: 13, fontWeight: '600', color: '#111827', maxWidth: '55%', textAlign: 'right' },
+  docsTitle: { fontSize: 13, fontWeight: '700', color: '#111827', paddingVertical: 12 },
+  docsRow: { flexDirection: 'row', gap: 10, paddingBottom: 14 },
+  docItem: { flex: 1, alignItems: 'center' },
+  docImage: { width: '100%', aspectRatio: 1.4, borderRadius: 8, backgroundColor: '#F3F4F6' },
+  docLabel: { fontSize: 11, color: '#6B7280', marginTop: 4, fontWeight: '600' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionBtn: { flex: 1, minWidth: '45%', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
   actionBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
