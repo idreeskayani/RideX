@@ -4,14 +4,16 @@ import { Text, View, StyleSheet } from 'react-native';
 
 import DriverHomeScreen from '../screens/home/DriverHomeScreen';
 import DriverHistoryScreen from '../screens/history/driverHistoryScreen';
+import NotificationScreen from '../screens/notification/notificationScreen';
 import ProfileScreen from '../screens/profile/profileScreen';
 
 const Tab = createBottomTabNavigator();
 
 const TABS = [
-  { name: 'DriverHome',    label: 'Rides',   icon: '🚗' },
-  { name: 'DriverHistory', label: 'History', icon: '🕐' },
-  { name: 'Profile',       label: 'Profile', icon: '👤' },
+  { name: 'DriverHome',          label: 'Rides',   icon: '🚗' },
+  { name: 'DriverHistory',       label: 'History', icon: '🕐' },
+  { name: 'DriverNotifications', label: 'Alerts',  icon: '🔔' },
+  { name: 'Profile',             label: 'Profile', icon: '👤' },
 ];
 
 export default function DriverTabNavigator({ onOnlineChange }: { onOnlineChange?: (online: boolean) => void }) {
@@ -42,6 +44,8 @@ export default function DriverTabNavigator({ onOnlineChange }: { onOnlineChange?
             ? (props: any) => <DriverHomeScreen {...props} onOnlineChange={onOnlineChange} />
             : tab.name === 'DriverHistory'
             ? (props: any) => <DriverHistoryScreen {...props} />
+            : tab.name === 'DriverNotifications'
+            ? (props: any) => <NotificationScreen {...props} />
             : (props: any) => <ProfileScreen {...props} />}
         />
       ))}

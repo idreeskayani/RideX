@@ -25,6 +25,14 @@ export class UsersService {
     throw new BadRequestException('Cannot switch role');
   }
 
+  async updateProfileImage(userId: string, filename: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { profileImage: filename },
+    });
+    return { profileImage: filename };
+  }
+
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

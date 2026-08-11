@@ -2,12 +2,14 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
   ScrollView,
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
@@ -82,6 +84,26 @@ export default function ProfileScreen({ navigation }: any) {
     }
   }, [profile, authUser, dispatch, navigation]);
 
+  const [uploadingPic, setUploadingPic] = useState(false);
+
+  const handlePickImage = useCallback(async () => {
+    launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, async res => {
+      const asset = res.assets?.[0];
+      if (!asset?.uri) return;
+      setUploadingPic(true);
+      try {
+        const form = new FormData();
+        form.append('image', { uri: asset.uri, name: asset.fileName ?? 'photo.jpg', type: asset.type ?? 'image/jpeg' } as any);
+        const r = await api.patch('/users/profile-image', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+        setProfile((prev: any) => ({ ...prev, profileImage: r.data.profileImage }));
+      } catch {
+        Alert.alert('Error', 'Failed to upload image');
+      } finally {
+        setUploadingPic(false);
+      }
+    });
+  }, []);
+
   const user = profile ?? authUser;
   const initials = user?.fullName
     ? user.fullName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
@@ -99,9 +121,26 @@ export default function ProfileScreen({ navigation }: any) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Avatar */}
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
+        <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
+          <View style={styles.avatarCircle}>
+            {user?.profileImage ? (
+              <Image
+                source={{ uri: `http://192.168.100.22:3000/uploads/profiles/${user.profileImage}` }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
+            {uploadingPic && (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </View>
+          <View style={styles.editBadge}>
+            <Text style={styles.editBadgeText}>✏️</Text>
+          </View>
+        </TouchableOpacity>
 
         <Text style={styles.name}>{user?.fullName ?? '—'}</Text>
         <Text style={styles.email}>{user?.email ?? '—'}</Text>
@@ -186,10 +225,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 4,
   },
+  avatarImage: { width: 88, height: 88, borderRadius: 44 },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 44,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#F9FAFB',
+  },
+  editBadgeText: { fontSize: 11 },
   avatarText: { fontSize: 32, fontWeight: '700', color: '#FFFFFF' },
-  name: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  name: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 4, marginTop: 10 },
   email: { fontSize: 14, color: '#6B7280', marginBottom: 10 },
   roleBadge: {
     backgroundColor: '#DBEAFE',
