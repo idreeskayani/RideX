@@ -175,11 +175,13 @@ export default function RideAcceptedScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/liberty">
+      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/bright">
         <Camera
           ref={cameraRef}
-          zoom={ZOOM}
-          center={center ? [center.longitude, center.latitude] : [0, 0]}
+          initialViewState={{
+            center: center ? [center.longitude, center.latitude] : [0, 0],
+            zoom: ZOOM,
+          }}
         />
         {/* Progressive remaining route: driver → pickup */}
         {remainingGeom && (

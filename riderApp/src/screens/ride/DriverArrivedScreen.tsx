@@ -45,10 +45,12 @@ export default function DriverArrivedScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/liberty">
+      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/bright">
         <Camera
-          zoom={DEFAULT_ZOOM}
-          center={pickup ? [pickup.longitude, pickup.latitude] : [0, 0]}
+          initialViewState={{
+            center: pickup ? [pickup.longitude, pickup.latitude] : [0, 0],
+            zoom: DEFAULT_ZOOM,
+          }}
         />
         {pickup && (
           <Marker id="pickup" lngLat={[pickup.longitude, pickup.latitude]}>

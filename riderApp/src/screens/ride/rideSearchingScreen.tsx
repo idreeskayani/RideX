@@ -84,11 +84,13 @@ export default function RideSearchingScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/liberty">
+      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/bright">
         <Camera
           ref={cameraRef}
-          zoom={DEFAULT_ZOOM}
-          center={pickup ? [pickup.longitude, pickup.latitude] : [0, 0]}
+          initialViewState={{
+            center: pickup ? [pickup.longitude, pickup.latitude] : [0, 0],
+            zoom: DEFAULT_ZOOM,
+          }}
         />
         {nearbyDrivers.map(driver => (
           <Marker key={driver.id} id={`d-${driver.id}`} lngLat={[driver.longitude, driver.latitude]}>

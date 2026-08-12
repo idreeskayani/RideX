@@ -230,10 +230,12 @@ export default function DriverHomeScreen({ navigation, onOnlineChange }: any) {
     <View style={styles.container}>
       {/* Map */}
       <View style={styles.mapContainer}>
-        <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/liberty">
+        <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/bright">
           <Camera
-            zoom={ZOOM}
-            center={driverPos ? [driverPos.longitude, driverPos.latitude] : [67.0011, 24.8607]}
+            initialViewState={{
+              center: driverPos ? [driverPos.longitude, driverPos.latitude] : [67.0011, 24.8607],
+              zoom: ZOOM,
+            }}
           />
           {rides.map(r =>
             r.pickupLat && r.pickupLng ? (

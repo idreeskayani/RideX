@@ -220,11 +220,13 @@ export default function DriverStartedScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/liberty">
+      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/bright">
         <Camera
           ref={cameraRef}
-          zoom={ZOOM}
-          center={driverPos ? [driverPos.longitude, driverPos.latitude] : [destination.longitude, destination.latitude]}
+          initialViewState={{
+            center: driverPos ? [driverPos.longitude, driverPos.latitude] : [destination.longitude, destination.latitude],
+            zoom: ZOOM,
+          }}
         />
         {remainingGeom && (
           <MapRoute geometry={remainingGeom} color="#111827" id="driver-to-dest" width={5} />
