@@ -6,6 +6,7 @@ import {
   type CameraRef,
   Marker,
 } from '@maplibre/maplibre-react-native';
+import { MAP_STYLE } from '../../constants/map';
 import { TouchableOpacity } from 'react-native';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
@@ -145,7 +146,7 @@ export default function RideStartedScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/bright">
+      <MapLibre style={StyleSheet.absoluteFill} mapStyle={MAP_STYLE}>
         <Camera
           ref={cameraRef}
           initialViewState={{

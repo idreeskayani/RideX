@@ -17,6 +17,7 @@ import {
   Camera,
   Marker,
 } from '@maplibre/maplibre-react-native';
+import { MAP_STYLE } from '../../constants/map';
 import Geolocation from '@react-native-community/geolocation';
 import { getAvailableRides, acceptRide } from '../../api/ride';
 import api from '../../api/axios';
@@ -230,7 +231,7 @@ export default function DriverHomeScreen({ navigation, onOnlineChange }: any) {
     <View style={styles.container}>
       {/* Map */}
       <View style={styles.mapContainer}>
-        <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/bright">
+        <MapLibre style={StyleSheet.absoluteFill} mapStyle={MAP_STYLE}>
           <Camera
             initialViewState={{
               center: driverPos ? [driverPos.longitude, driverPos.latitude] : [67.0011, 24.8607],
