@@ -58,6 +58,29 @@ interface Coordinates {
   longitude: number;
 }
 
+async function reverseGeocode(coords: Coordinates): Promise<string> {
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/reverse` +
+      `?lat=${coords.latitude}&lon=${coords.longitude}&format=json&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'RideXApp/1.0' },
+    });
+    const data = await res.json();
+    const a = data.address;
+    return (
+      a?.road ||
+      a?.neighbourhood ||
+      a?.suburb ||
+      a?.city_district ||
+      data.display_name?.split(',')[0] ||
+      'Your location'
+    );
+  } catch {
+    return 'Your location';
+  }
+}
+
 async function searchPlaces(
   query: string,
   near: Coordinates,
@@ -65,9 +88,8 @@ async function searchPlaces(
   const url =
     `https://nominatim.openstreetmap.org/search` +
     `?q=${encodeURIComponent(query)}` +
-    `&format=json&limit=5&addressdetails=1` +
-    `&viewbox=${near.longitude - 0.5},${near.latitude + 0.5},${near.longitude + 0.5},${near.latitude - 0.5}` +
-    `&bounded=1`;
+    `&format=json&limit=8&addressdetails=1` +
+    `&viewbox=${near.longitude - 1},${near.latitude + 1},${near.longitude + 1},${near.latitude - 1}`;
 
   const res = await fetch(url, {
     headers: { 'Accept-Language': 'en', 'User-Agent': 'RideXApp/1.0' },
@@ -116,6 +138,7 @@ const CATEGORIES: {
 ];
 
 type ActiveField = 'pickup' | 'destination' | null;
+type PinMode = { field: ActiveField } | null;
 
 const DEFAULT_ZOOM = 14;
 const SHEET_COLLAPSED_HEIGHT = 160;
@@ -141,6 +164,12 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
   const [isLocating, setIsLocating] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [pinMode, setPinMode] = useState<PinMode>(null);
+  const [pinAddress, setPinAddress] = useState<string>('');
+  const [isReversingPin, setIsReversingPin] = useState(false);
+  const pinDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapCenterRef = useRef<Coordinates | null>(null);
+  const confirmedCenterRef = useRef<Coordinates | null>(null);
 
   const panelAnim = useRef(new Animated.Value(0)).current;
   const sheetBottom = useRef(new Animated.Value(0)).current;
@@ -195,7 +224,7 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
           };
           setUserLocation(coords);
           setPickup(coords);
-          setPickupText('Your location');
+          reverseGeocode(coords).then(name => setPickupText(name));
           setIsLocating(false);
         },
         () => {
@@ -208,7 +237,7 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
               };
               setUserLocation(coords);
               setPickup(coords);
-              setPickupText('Your location');
+              reverseGeocode(coords).then(name => setPickupText(name));
               setIsLocating(false);
             },
             () => {
@@ -282,10 +311,69 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
     [activeField],
   );
 
+  // ---------- Pin mode ----------
+
+  const enterPinMode = useCallback((field: ActiveField) => {
+    const center = field === 'pickup' ? pickup : destination;
+    const startCoords = center ?? userLocation;
+    if (startCoords) {
+      mapCenterRef.current = startCoords;
+      cameraRef.current?.easeTo({ center: [startCoords.longitude, startCoords.latitude], zoom: DEFAULT_ZOOM, duration: 300 });
+      setIsReversingPin(true);
+      reverseGeocode(startCoords).then(name => {
+        setPinAddress(name);
+        setIsReversingPin(false);
+      });
+    }
+    setSuggestions([]);
+    setActiveField(null);
+    Keyboard.dismiss();
+    setPinMode({ field });
+  }, [pickup, destination, userLocation]);
+
+  const handleRegionDidChange = useCallback((e: any) => {
+    if (!pinMode) return;
+    // ViewStateChangeEvent: e.nativeEvent.center = [lng, lat]
+    const center = e?.nativeEvent?.center;
+    if (!center) return;
+    const lng = Array.isArray(center) ? center[0] : center.lng;
+    const lat = Array.isArray(center) ? center[1] : center.lat;
+    if (lat == null || lng == null) return;
+    const coords: Coordinates = { latitude: lat, longitude: lng };
+    mapCenterRef.current = coords;
+    if (pinDebounce.current) clearTimeout(pinDebounce.current);
+    setIsReversingPin(true);
+    pinDebounce.current = setTimeout(async () => {
+      const name = await reverseGeocode(coords);
+      setPinAddress(name);
+      setIsReversingPin(false);
+    }, 300);
+  }, [pinMode]);
+
+  const confirmPin = useCallback(async () => {
+    const coords = mapCenterRef.current;
+    if (!coords || !pinMode) return;
+    const name = pinAddress || await reverseGeocode(coords);
+    if (pinMode.field === 'pickup') {
+      setPickup(coords);
+      setPickupText(name);
+    } else {
+      setDestination(coords);
+      setDestinationText(name);
+    }
+    confirmedCenterRef.current = coords;
+    setPinMode(null);
+    cameraRef.current?.easeTo({
+      center: [coords.longitude, coords.latitude],
+      zoom: DEFAULT_ZOOM,
+      duration: 300,
+    });
+  }, [pinMode, pinAddress]);
+
   const handleUseCurrentLocation = useCallback(() => {
     if (!userLocation) return;
     setPickup(userLocation);
-    setPickupText('Your location');
+    reverseGeocode(userLocation).then(name => setPickupText(name));
     setSuggestions([]);
     setActiveField(null);
     cameraRef.current?.easeTo({
@@ -325,8 +413,8 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
     }
   }, [pickup, destination, pickupText, destinationText, dispatch, navigation]);
 
-  const showSuggestionsPanel = activeField !== null;
-  const showCategoryPanel = !showSuggestionsPanel && !!pickup && !!destination;
+  const showSuggestionsPanel = activeField !== null && !pinMode;
+  const showCategoryPanel = !showSuggestionsPanel && !pinMode && !!pickup && !!destination;
 
   useEffect(() => {
     Animated.timing(panelAnim, {
@@ -352,16 +440,20 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
       {/* Map fills the whole screen */}
       <MapLibre
         style={StyleSheet.absoluteFill}
-        mapStyle="https://tiles.openfreemap.org/styles/liberty"
+        mapStyle="https://tiles.openfreemap.org/styles/bright"
+        onRegionDidChange={handleRegionDidChange}
       >
         <Camera
           ref={cameraRef}
-          zoom={DEFAULT_ZOOM}
-          center={
-            userLocation
-              ? [userLocation.longitude, userLocation.latitude]
-              : [0, 0]
-          }
+          initialViewState={{
+            center: userLocation ? [userLocation.longitude, userLocation.latitude] : [0, 0],
+            zoom: DEFAULT_ZOOM,
+          }}
+          {...(!pinMode && {
+            center: confirmedCenterRef.current
+              ? [confirmedCenterRef.current.longitude, confirmedCenterRef.current.latitude]
+              : undefined,
+          })}
         />
 
         {pickup && (
@@ -383,6 +475,13 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
           </Marker>
         )}
       </MapLibre>
+
+      {/* Crosshair pin overlay — only in pin mode */}
+      {pinMode && (
+        <View style={styles.crosshairContainer} pointerEvents="none">
+          <Text style={styles.crosshairPin}>📍</Text>
+        </View>
+      )}
 
       <QuickLogoutButton />
 
@@ -406,7 +505,28 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
         <Text style={styles.recenterButtonText}>◎</Text>
       </TouchableOpacity>
 
+      {/* Pin mode confirm bar */}
+      {pinMode && (
+        <View style={styles.pinBar}>
+          <View style={styles.pinBarAddress}>
+            {isReversingPin
+              ? <ActivityIndicator size="small" color="#6B7280" />
+              : <Text style={styles.pinBarAddressText} numberOfLines={1}>{pinAddress || 'Move map to set location'}</Text>
+            }
+          </View>
+          <View style={styles.pinBarButtons}>
+            <TouchableOpacity style={styles.pinBarCancel} onPress={() => setPinMode(null)}>
+              <Text style={styles.pinBarCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pinBarConfirm} onPress={confirmPin}>
+              <Text style={styles.pinBarConfirmText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Bottom sheet — sits on top of the map */}
+      {!pinMode && (
       <Animated.View style={[styles.sheetWrapper, { bottom: sheetBottom }]}>
         <View style={styles.sheet}>
           <View style={styles.inputsCard}>
@@ -464,11 +584,17 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
                     onPress={handleUseCurrentLocation}
                   >
                     <Text style={styles.suggestionIcon}>◎</Text>
-                    <Text style={styles.suggestionTitle}>
-                      Use your current location
-                    </Text>
+                    <Text style={styles.suggestionTitle}>Use your current location</Text>
                   </TouchableOpacity>
                 )}
+
+                <TouchableOpacity
+                  style={styles.suggestionRow}
+                  onPress={() => enterPinMode(activeField)}
+                >
+                  <Text style={styles.suggestionIcon}>🗺️</Text>
+                  <Text style={styles.suggestionTitle}>Set location on map</Text>
+                </TouchableOpacity>
 
                 {isSearching ? (
                   <ActivityIndicator
@@ -555,6 +681,7 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
           )}
         </View>
       </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -698,4 +825,54 @@ const styles = StyleSheet.create({
   categoryFare: { fontSize: 12, fontWeight: '700', color: '#111827', marginTop: 2 },
   categoryFareActive: { color: '#FFFFFF' },
   categoryDesc: { fontSize: 10, color: '#9CA3AF', marginTop: 2, textAlign: 'center' },
+  crosshairContainer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  crosshairPin: { fontSize: 40, marginBottom: 36 },
+  pinBar: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
+  },
+  pinBarAddress: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  pinBarAddressText: { fontSize: 14, color: '#111827', fontWeight: '500' },
+  pinBarButtons: { flexDirection: 'row', gap: 10 },
+  pinBarCancel: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+  },
+  pinBarCancelText: { fontSize: 15, fontWeight: '600', color: '#374151' },
+  pinBarConfirm: {
+    flex: 2,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#111827',
+  },
+  pinBarConfirmText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
 });

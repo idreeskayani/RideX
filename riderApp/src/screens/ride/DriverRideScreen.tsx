@@ -236,11 +236,13 @@ export default function DriverRideScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/liberty">
+      <MapLibre style={StyleSheet.absoluteFill} mapStyle="https://tiles.openfreemap.org/styles/bright">
         <Camera
           ref={cameraRef}
-          zoom={ZOOM}
-          center={driverPos ? [driverPos.longitude, driverPos.latitude] : [pickup.longitude, pickup.latitude]}
+          initialViewState={{
+            center: driverPos ? [driverPos.longitude, driverPos.latitude] : [pickup.longitude, pickup.latitude],
+            zoom: ZOOM,
+          }}
         />
         {/* Route: blue → pickup, dark → destination after arrival */}
         {remainingGeom && (
