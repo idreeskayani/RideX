@@ -17,10 +17,11 @@ const RegisterScreen = ({ navigation }: any) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
 
   const onRegister = async () => {
-    if (!fullName.trim() || !email.trim() ||!password) {
+    if (!fullName.trim() || !email.trim() || !password || !phoneNumber.trim()) {
       Alert.alert('Error', 'Please fill all fields');
       return;
     }
@@ -31,6 +32,7 @@ const RegisterScreen = ({ navigation }: any) => {
         fullName: fullName.trim(),
         email: email.trim(),
         password,
+        phoneNumber: phoneNumber.trim(),
       });
 
       navigation.navigate('VerifyEmail', { email: email.trim() });
@@ -68,6 +70,14 @@ const RegisterScreen = ({ navigation }: any) => {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+        />
+
+        <CustomInput
+          label="Phone Number"
+          placeholder="+92 300 1234567"
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          keyboardType="phone-pad"
         />
 
         <CustomInput

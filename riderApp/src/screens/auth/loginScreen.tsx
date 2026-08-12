@@ -33,6 +33,11 @@ const LoginScreen = ({ navigation }: any) => {
       const decoded = jwtDecode<JwtPayload>(data.accessToken);
       const role = decoded.role ?? 'RIDER';
 
+      if (role === 'ADMIN') {
+        navigation.getParent()?.replace('Main', { role });
+        return;
+      }
+
       try {
         const activeRide = await getActiveRide(role);
         if (!navigateToActiveRide(navigation.getParent(), activeRide, role)) {
@@ -50,7 +55,7 @@ const LoginScreen = ({ navigation }: any) => {
         return;
       }
 
-      Alert.alert('Login Failed', message || error.message);
+      Alert.alert('Login Failed', message || error.message || 'Unknown error');
     }
   };
 

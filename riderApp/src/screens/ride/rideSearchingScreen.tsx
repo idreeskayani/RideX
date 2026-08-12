@@ -12,7 +12,6 @@ import {
   Camera,
   type CameraRef,
   Marker,
-  UserLocation,
 } from '@maplibre/maplibre-react-native';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
@@ -23,7 +22,7 @@ import QuickLogoutButton from '../../components/QuickLogoutButton';
 const DEFAULT_ZOOM = 14;
 
 export default function RideSearchingScreen({ route, navigation }: any) {
-  const { rideId } = route.params;
+  const { rideId, category } = route.params;
   const cameraRef = useRef<CameraRef>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pickup = useSelector((s: RootState) => s.ride.pickup);
@@ -34,7 +33,7 @@ export default function RideSearchingScreen({ route, navigation }: any) {
   useEffect(() => {
     if (!pickup) return;
     const load = () =>
-      getNearbyDrivers(pickup, 'MINI' as RideCategory)
+      getNearbyDrivers(pickup, (category ?? 'MINI') as RideCategory)
         .then(setNearbyDrivers)
         .catch(() => {});
     load();
@@ -91,8 +90,6 @@ export default function RideSearchingScreen({ route, navigation }: any) {
           zoom={DEFAULT_ZOOM}
           center={pickup ? [pickup.longitude, pickup.latitude] : [0, 0]}
         />
-        <UserLocation />
-
         {nearbyDrivers.map(driver => (
           <Marker key={driver.id} id={`d-${driver.id}`} lngLat={[driver.longitude, driver.latitude]}>
             <View style={styles.carMarker}>

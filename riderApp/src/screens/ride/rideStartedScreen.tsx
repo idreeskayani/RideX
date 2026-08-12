@@ -5,7 +5,6 @@ import {
   Camera,
   type CameraRef,
   Marker,
-  UserLocation,
 } from '@maplibre/maplibre-react-native';
 import { TouchableOpacity } from 'react-native';
 import { useSelector } from 'react-redux';
@@ -152,8 +151,6 @@ export default function RideStartedScreen({ route, navigation }: any) {
           zoom={ZOOM}
           center={driverPos ? [driverPos.longitude, driverPos.latitude] : pickup ? [pickup.longitude, pickup.latitude] : [0, 0]}
         />
-        <UserLocation />
-
         {/* Progressive remaining route: driver → destination */}
         {remainingGeom && (
           <MapRoute geometry={remainingGeom} color="#111827" id="ride-route" width={5} />

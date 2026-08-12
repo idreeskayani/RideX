@@ -28,6 +28,10 @@ const SplashScreen = ({ navigation }: any) => {
       if (isExpired) { navigation.replace('Auth'); return; }
 
       const role = decoded.role ?? 'RIDER';
+      if (role === 'ADMIN') {
+        navigation.replace('Main', { role });
+        return;
+      }
       try {
         const activeRide = await getActiveRide(role);
         if (!navigateToActiveRide(navigation, activeRide, role)) {

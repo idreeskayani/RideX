@@ -521,26 +521,58 @@ export class AdminService {
 
   async deleteUser(userId: string) {
     const user = await this.prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
+      where: { id: userId },
+      include: { driver: true },
     });
 
     if (!user) {
-      throw new NotFoundException(
-        'User not found',
-      );
+      throw new NotFoundException('User not found');
     }
 
-    await this.prisma.user.delete({
-      where: {
-        id: userId,
-      },
-    });
+    // Delete in dependency order to satisfy FK constraints
+    if (user.driver) {
+      const driverId = user.driver.id;
+      const driverRides = await this.prisma.ride.findMany({
+        where: { driverId },
+        select: { id: true },
+      });
+      const driverRideIds = driverRides.map(r => r.id);
+      if (driverRideIds.length) {
+        await this.prisma.rating.deleteMany({ where: { rideId: { in: driverRideIds } } });
+        const driverChats = await this.prisma.chat.findMany({ where: { rideId: { in: driverRideIds } }, select: { id: true } });
+        const driverChatIds = driverChats.map(c => c.id);
+        if (driverChatIds.length) {
+          await this.prisma.message.deleteMany({ where: { chatId: { in: driverChatIds } } });
+          await this.prisma.chat.deleteMany({ where: { id: { in: driverChatIds } } });
+        }
+        await this.prisma.ride.deleteMany({ where: { id: { in: driverRideIds } } });
+      }
+      await this.prisma.rating.deleteMany({ where: { driverId } });
+      await this.prisma.driver.delete({ where: { id: driverId } });
+    }
 
-    return {
-      message: 'User deleted successfully',
-    };
+    // Delete rider-side rides
+    const riderRides = await this.prisma.ride.findMany({
+      where: { riderId: userId },
+      select: { id: true },
+    });
+    const riderRideIds = riderRides.map(r => r.id);
+    if (riderRideIds.length) {
+      await this.prisma.rating.deleteMany({ where: { rideId: { in: riderRideIds } } });
+      const riderChats = await this.prisma.chat.findMany({ where: { rideId: { in: riderRideIds } }, select: { id: true } });
+      const riderChatIds = riderChats.map(c => c.id);
+      if (riderChatIds.length) {
+        await this.prisma.message.deleteMany({ where: { chatId: { in: riderChatIds } } });
+        await this.prisma.chat.deleteMany({ where: { id: { in: riderChatIds } } });
+      }
+      await this.prisma.ride.deleteMany({ where: { id: { in: riderRideIds } } });
+    }
+
+    await this.prisma.rating.deleteMany({ where: { riderId: userId } });
+    await this.prisma.notification.deleteMany({ where: { userId } });
+    await this.prisma.user.delete({ where: { id: userId } });
+
+    return { message: 'User deleted successfully' };
   }
   async getAllRides(query: GetRidesDto) {
     const {

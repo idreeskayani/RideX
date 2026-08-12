@@ -16,7 +16,6 @@ import {
   Map as MapLibre,
   Camera,
   Marker,
-  UserLocation,
 } from '@maplibre/maplibre-react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { getAvailableRides, acceptRide } from '../../api/ride';
@@ -100,7 +99,7 @@ interface AvailableRide {
   rider: { id: string; fullName: string; email: string };
 }
 
-export default function DriverHomeScreen({ navigation }: any) {
+export default function DriverHomeScreen({ navigation, onOnlineChange }: any) {
   const [rides, setRides] = useState<AvailableRide[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -111,12 +110,12 @@ export default function DriverHomeScreen({ navigation }: any) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchId = useRef<number | null>(null);
 
-  // ── Check driver profile ─────────────────────────────────────────────────
+  // ── Check driver profile & sync online status ───────────────────────────
 
   useEffect(() => {
-    getDriverProfile().catch(() => {
-      navigation.replace('DriverRegister');
-    });
+    getDriverProfile()
+      .then(profile => setIsOnline(profile.isOnline ?? false))
+      .catch(() => navigation.replace('DriverRegister'));
   }, []);
 
   // ── GPS ───────────────────────────────────────────────────────────────────
@@ -174,13 +173,15 @@ export default function DriverHomeScreen({ navigation }: any) {
     setTogglingOnline(true);
     try {
       await api.patch(isOnline ? '/driver/go-offline' : '/driver/go-online');
-      setIsOnline(prev => !prev);
+      const next = !isOnline;
+      setIsOnline(next);
+      onOnlineChange?.(next);
     } catch {
       Alert.alert('Error', 'Could not update online status.');
     } finally {
       setTogglingOnline(false);
     }
-  }, []);
+  }, [isOnline]);
 
   // ── Accept ride ───────────────────────────────────────────────────────────
 
@@ -234,7 +235,6 @@ export default function DriverHomeScreen({ navigation }: any) {
             zoom={ZOOM}
             center={driverPos ? [driverPos.longitude, driverPos.latitude] : [67.0011, 24.8607]}
           />
-          <UserLocation />
           {rides.map(r =>
             r.pickupLat && r.pickupLng ? (
               <Marker key={r.id} id={`pickup-${r.id}`} lngLat={[r.pickupLng, r.pickupLat]}>

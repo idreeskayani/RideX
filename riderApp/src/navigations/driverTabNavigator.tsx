@@ -4,17 +4,19 @@ import { Text, View, StyleSheet } from 'react-native';
 
 import DriverHomeScreen from '../screens/home/DriverHomeScreen';
 import DriverHistoryScreen from '../screens/history/driverHistoryScreen';
+import NotificationScreen from '../screens/notification/notificationScreen';
 import ProfileScreen from '../screens/profile/profileScreen';
 
 const Tab = createBottomTabNavigator();
 
 const TABS = [
-  { name: 'DriverHome',    component: DriverHomeScreen,    icon: '🚗', label: 'Rides' },
-  { name: 'DriverHistory', component: DriverHistoryScreen, icon: '🕐', label: 'History' },
-  { name: 'Profile',       component: ProfileScreen,       icon: '👤', label: 'Profile' },
+  { name: 'DriverHome',          label: 'Rides',   icon: '🚗' },
+  { name: 'DriverHistory',       label: 'History', icon: '🕐' },
+  { name: 'DriverNotifications', label: 'Alerts',  icon: '🔔' },
+  { name: 'Profile',             label: 'Profile', icon: '👤' },
 ];
 
-export default function DriverTabNavigator() {
+export default function DriverTabNavigator({ onOnlineChange }: { onOnlineChange?: (online: boolean) => void }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -35,7 +37,17 @@ export default function DriverTabNavigator() {
       })}
     >
       {TABS.map(tab => (
-        <Tab.Screen key={tab.name} name={tab.name} component={tab.component} />
+        <Tab.Screen
+          key={tab.name}
+          name={tab.name}
+          children={tab.name === 'DriverHome'
+            ? (props: any) => <DriverHomeScreen {...props} onOnlineChange={onOnlineChange} />
+            : tab.name === 'DriverHistory'
+            ? (props: any) => <DriverHistoryScreen {...props} />
+            : tab.name === 'DriverNotifications'
+            ? (props: any) => <NotificationScreen {...props} />
+            : (props: any) => <ProfileScreen {...props} />}
+        />
       ))}
     </Tab.Navigator>
   );

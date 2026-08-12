@@ -125,6 +125,11 @@ export class RideService {
       'Ride Accepted',
       'Your ride has been accepted by the driver.',
     );
+    await this.notificationService.createNotification(
+      driver.userId,
+      'Ride Accepted',
+      'You have accepted a ride. Head to the pickup location.',
+    );
     this.socketGateway.sendRideStatus(
       updatedRide.riderId,
       'ride-accepted',
@@ -190,6 +195,11 @@ export class RideService {
       ride.riderId,
       'Driver Arrived',
       'Your driver has arrived at the pickup location.',
+    );
+    await this.notificationService.createNotification(
+      driver.userId,
+      'Arrived at Pickup',
+      'You have marked arrival at the pickup location.',
     );
     const arrivedPayload = { rideId: updatedRide.id, status: updatedRide.status };
     this.socketGateway.sendRideStatus(ride.riderId, 'ride-arrived', arrivedPayload);
@@ -262,6 +272,11 @@ export class RideService {
       updatedRide.riderId,
       'Ride Started',
       'Your ride has started.',
+    );
+    await this.notificationService.createNotification(
+      driver.userId,
+      'Ride Started',
+      'Ride is in progress. Drive safe!',
     );
 
     return updatedRide;
@@ -348,6 +363,11 @@ this.socketGateway.broadcastToRide(updatedRide.id, 'ride-completed', completedPa
       updatedRide.riderId,
       'Ride Completed',
       'Your ride has been completed successfully.',
+    );
+    await this.notificationService.createNotification(
+      updatedRide.driver!.userId,
+      'Ride Completed',
+      `Ride completed. You earned PKR ${updatedRide.fare ?? 0}.`,
     );
 
     return updatedRide;

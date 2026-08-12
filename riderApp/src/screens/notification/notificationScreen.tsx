@@ -29,7 +29,7 @@ export default function NotificationScreen() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await api.get('/notification/my-notifications');
+      const res = await api.get('/notification');
       setNotifications(res.data);
     } catch {}
     finally {

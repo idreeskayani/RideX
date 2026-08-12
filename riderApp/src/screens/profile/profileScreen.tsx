@@ -2,20 +2,24 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
   ScrollView,
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
 import { logout as logoutApi } from '../../api/auth';
-import { logout as logoutAction } from '../../redux/authSlice';
+import { logout as logoutAction, loginSuccess } from '../../redux/authSlice';
 import { disconnectSocket } from '../../services/socket';
 import { CommonActions } from '@react-navigation/native';
 import api from '../../api/axios';
+import { hasDriverProfile } from '../../api/driver';
+import { saveTokens, getRefreshToken } from '../../utils/storage';
 
 export default function ProfileScreen({ navigation }: any) {
   const dispatch = useDispatch();
@@ -23,6 +27,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     api.get('/users/me')
@@ -50,6 +55,55 @@ export default function ProfileScreen({ navigation }: any) {
     ]);
   }, [dispatch, navigation]);
 
+  const handleSwitchRole = useCallback(async () => {
+    const currentRole = (profile ?? authUser)?.role;
+    if (currentRole === 'RIDER') {
+      const hasProfile = await hasDriverProfile();
+      if (!hasProfile) {
+        navigation.navigate('DriverRegister');
+        return;
+      }
+    }
+    setSwitching(true);
+    try {
+      const res = await api.patch('/users/switch-role');
+      const newRole: string = res.data.role;
+      // Refresh tokens so JWT reflects new role
+      const refreshToken = await getRefreshToken();
+      const tokenRes = await api.post('/auth/refresh', { refreshToken });
+      await saveTokens(tokenRes.data.accessToken, tokenRes.data.refreshToken);
+      dispatch(loginSuccess({ token: tokenRes.data.accessToken, user: { ...(profile ?? authUser), role: newRole } }));
+      navigation.dispatch(
+        CommonActions.reset({ index: 0, routes: [{ name: 'Main', params: { role: newRole } }] })
+      );
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? 'Failed to switch role';
+      Alert.alert('Error', msg);
+    } finally {
+      setSwitching(false);
+    }
+  }, [profile, authUser, dispatch, navigation]);
+
+  const [uploadingPic, setUploadingPic] = useState(false);
+
+  const handlePickImage = useCallback(async () => {
+    launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, async res => {
+      const asset = res.assets?.[0];
+      if (!asset?.uri) return;
+      setUploadingPic(true);
+      try {
+        const form = new FormData();
+        form.append('image', { uri: asset.uri, name: asset.fileName ?? 'photo.jpg', type: asset.type ?? 'image/jpeg' } as any);
+        const r = await api.patch('/users/profile-image', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+        setProfile((prev: any) => ({ ...prev, profileImage: r.data.profileImage }));
+      } catch {
+        Alert.alert('Error', 'Failed to upload image');
+      } finally {
+        setUploadingPic(false);
+      }
+    });
+  }, []);
+
   const user = profile ?? authUser;
   const initials = user?.fullName
     ? user.fullName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
@@ -67,9 +121,26 @@ export default function ProfileScreen({ navigation }: any) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Avatar */}
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
+        <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
+          <View style={styles.avatarCircle}>
+            {user?.profileImage ? (
+              <Image
+                source={{ uri: `http://192.168.100.22:3000/uploads/profiles/${user.profileImage}` }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
+            {uploadingPic && (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </View>
+          <View style={styles.editBadge}>
+            <Text style={styles.editBadgeText}>✏️</Text>
+          </View>
+        </TouchableOpacity>
 
         <Text style={styles.name}>{user?.fullName ?? '—'}</Text>
         <Text style={styles.email}>{user?.email ?? '—'}</Text>
@@ -90,6 +161,30 @@ export default function ProfileScreen({ navigation }: any) {
           <Divider />
           <InfoRow label="Account Status" value={user?.isVerified ? '✅ Verified' : '⏳ Unverified'} />
         </View>
+
+        {user?.role === 'DRIVER' && (
+          <TouchableOpacity
+            style={styles.editVehicleButton}
+            onPress={() => navigation.navigate('EditVehicle')}
+          >
+            <Text style={styles.editVehicleButtonText}>🚗 Edit Vehicle Details</Text>
+          </TouchableOpacity>
+        )}
+
+        {user?.role !== 'ADMIN' && (
+          <TouchableOpacity
+            style={[styles.switchButton, switching && styles.logoutButtonDisabled]}
+            onPress={handleSwitchRole}
+            disabled={switching}
+          >
+            {switching
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.switchButtonText}>
+                  {user?.role === 'RIDER' ? '🚗 Switch to Driver' : '🧍 Switch to Rider'}
+                </Text>
+            }
+          </TouchableOpacity>
+        )}
 
         {/* Logout */}
         <TouchableOpacity
@@ -130,10 +225,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 4,
   },
+  avatarImage: { width: 88, height: 88, borderRadius: 44 },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 44,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#F9FAFB',
+  },
+  editBadgeText: { fontSize: 11 },
   avatarText: { fontSize: 32, fontWeight: '700', color: '#FFFFFF' },
-  name: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  name: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 4, marginTop: 10 },
   email: { fontSize: 14, color: '#6B7280', marginBottom: 10 },
   roleBadge: {
     backgroundColor: '#DBEAFE',
@@ -164,6 +281,24 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 14, color: '#6B7280' },
   infoValue: { fontSize: 14, fontWeight: '500', color: '#111827', maxWidth: '60%', textAlign: 'right' },
   divider: { height: 1, backgroundColor: '#F3F4F6' },
+  editVehicleButton: {
+    width: '100%',
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  editVehicleButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  switchButton: {
+    width: '100%',
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  switchButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   logoutButton: {
     width: '100%',
     backgroundColor: '#EF4444',

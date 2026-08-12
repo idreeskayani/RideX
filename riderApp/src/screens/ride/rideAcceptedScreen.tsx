@@ -5,7 +5,6 @@ import {
   Camera,
   type CameraRef,
   Marker,
-  UserLocation,
 } from '@maplibre/maplibre-react-native';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../redux/store';
@@ -182,8 +181,6 @@ export default function RideAcceptedScreen({ route, navigation }: any) {
           zoom={ZOOM}
           center={center ? [center.longitude, center.latitude] : [0, 0]}
         />
-        <UserLocation />
-
         {/* Progressive remaining route: driver → pickup */}
         {remainingGeom && (
           <MapRoute geometry={remainingGeom} color="#2563EB" id="driver-to-pickup" width={5} />

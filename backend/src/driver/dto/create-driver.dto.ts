@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsEnum, IsOptional } from 'class-validator';
 
 export enum RideCategory {
   MINI = 'MINI',
@@ -26,4 +26,13 @@ export class CreateDriverDto {
   @IsString()
   @IsNotEmpty()
   vehicleNumber!: string;
+
+  @IsOptional()
+  licenseImage?: string;
+
+  @IsOptional()
+  cnicImage?: string;
+
+  @IsOptional()
+  selfieImage?: string;
 }
