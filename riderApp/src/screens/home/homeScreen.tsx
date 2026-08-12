@@ -18,6 +18,7 @@ import {
   type CameraRef,
   Marker,
 } from '@maplibre/maplibre-react-native';
+import { MAP_STYLE } from '../../constants/map';
 import Geolocation from '@react-native-community/geolocation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
@@ -440,7 +441,7 @@ export default function HomeScreen({ navigation }: any): React.JSX.Element {
       {/* Map fills the whole screen */}
       <MapLibre
         style={StyleSheet.absoluteFill}
-        mapStyle="https://tiles.openfreemap.org/styles/bright"
+        mapStyle={MAP_STYLE}
         onRegionDidChange={handleRegionDidChange}
       >
         <Camera
